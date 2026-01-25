@@ -170,6 +170,12 @@ public class GameRoot : MonoSingleton<GameRoot>
         eventSystem = FindAnyObjectByType<EventSystem>();
 
         this.LogGreen("GameRoot initialized successfully!");
+
+        // 自动加载默认关卡
+        if (TestStageID > 0)
+        {
+            stageSystem.LoadStage(TestStageID);
+        }
     }
 
     private void Update()

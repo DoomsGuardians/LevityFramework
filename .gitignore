@@ -118,3 +118,5 @@ Assets/TextMesh Pro/
 # ========== #
 **/[Tt]est[Ss]cenes/
 **/[Ss]andbox/
+.claude/settings.local.json
+Assets/NaninovelData/.nani/Transient/Bridging/Server

@@ -26,7 +26,59 @@ public class WindowBase : WindowBehaviour
     protected AudioService audioService;
     protected DataService dataService;
     protected RoleSystem roleSystem;
+
+    #region 层级与显示属性
+    /// <summary>
+    /// UI 层级（新版）
+    /// </summary>
+    [Header("UI 层级设置")]
+    public UILayer uiLayer = UILayer.Normal;
+
+    /// <summary>
+    /// 旧版层级（已弃用，请使用 uiLayer）
+    /// </summary>
+    [System.Obsolete("请使用 uiLayer 属性")]
     public WindowLayer windowLayer;
+
+    /// <summary>
+    /// 是否为全屏窗口
+    /// 全屏窗口打开时会自动隐藏下层 UI 以减少 DrawCall
+    /// </summary>
+    [Tooltip("是否为全屏窗口（会触发覆盖管理）")]
+    public bool IsFullScreen { get; set; } = false;
+
+    /// <summary>
+    /// 是否始终可见
+    /// 标记为始终可见的窗口不会被全屏窗口遮挡
+    /// </summary>
+    [Tooltip("是否始终可见（不会被全屏窗口遮挡）")]
+    public bool IsAlwaysVisible { get; set; } = false;
+
+    /// <summary>
+    /// 窗口名称（用于调试和管理，隐藏基类同名属性）
+    /// </summary>
+    public new string Name { get; set; }
+
+    /// <summary>
+    /// 窗口的 Canvas 引用（用于覆盖管理，隐藏基类同名属性）
+    /// </summary>
+    public new Canvas canvas { get; private set; }
+
+    /// <summary>
+    /// 窗口的 CanvasGroup 引用（用于动画）
+    /// </summary>
+    public CanvasGroup canvasGroup { get; private set; }
+
+    /// <summary>
+    /// UI 动画器引用
+    /// </summary>
+    public UIAnimator uiAnimator { get; private set; }
+
+    /// <summary>
+    /// 分配的 Order In Layer
+    /// </summary>
+    public int AllocatedOrder { get; set; }
+    #endregion
 
     #region 生命周期
     public override void OnAwake()
@@ -38,6 +90,17 @@ public class WindowBase : WindowBehaviour
         audioService = gameRoot.audioService;
         dataService = gameRoot.dataService;
         roleSystem = gameRoot.roleSystem;
+
+        // 初始化组件引用（使用 gameObject.GetComponent）
+        canvas = gameObject.GetComponent<Canvas>();
+        canvasGroup = gameObject.GetComponent<CanvasGroup>();
+        uiAnimator = gameObject.GetComponent<UIAnimator>();
+
+        // 如果没有名称，使用 GameObject 名称
+        if (string.IsNullOrEmpty(Name))
+        {
+            Name = gameObject.name;
+        }
     }
 
     public override void OnHide() { }
@@ -198,4 +261,58 @@ public class WindowBase : WindowBehaviour
         isVisible = visible;
         gameObject.SetActive(visible);
     }
+
+    #region 覆盖管理回调
+    /// <summary>
+    /// 当窗口被全屏窗口覆盖时调用
+    /// 可重写此方法以暂停窗口逻辑（如动画、计时器等）
+    /// </summary>
+    public virtual void OnPause()
+    {
+        // 子类可重写
+    }
+
+    /// <summary>
+    /// 当覆盖的全屏窗口关闭后恢复时调用
+    /// 可重写此方法以恢复窗口逻辑
+    /// </summary>
+    public virtual void OnResume()
+    {
+        // 子类可重写
+    }
+    #endregion
+
+    #region 动画支持
+    /// <summary>
+    /// 播放显示动画
+    /// </summary>
+    /// <param name="onComplete">完成回调</param>
+    public void PlayShowAnimation(Action onComplete = null)
+    {
+        if (uiAnimator != null)
+        {
+            uiAnimator.PlayShowAnimation(onComplete);
+        }
+        else
+        {
+            onComplete?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// 播放隐藏动画
+    /// </summary>
+    /// <param name="onComplete">完成回调</param>
+    public void PlayHideAnimation(Action onComplete = null)
+    {
+        if (uiAnimator != null)
+        {
+            uiAnimator.PlayHideAnimation(onComplete);
+        }
+        else
+        {
+            onComplete?.Invoke();
+        }
+    }
+    #endregion
 }
