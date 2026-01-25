@@ -14,6 +14,48 @@
 - **对象池**：内置对象池支持
 - **数据存档**：简单的 JSON 序列化存档系统
 
+---
+
+## 架构概览
+
+```
+GameRoot (单例服务定位器)
+    │
+    ├─── Services (服务层) ─────────────────────────────────────┐
+    │    ├── InputService    (输入管理)                         │
+    │    ├── EventService    (事件系统)                         │
+    │    ├── ResService      (资源加载/对象池)                  │ 全局单例
+    │    ├── AudioService    (音频播放)                         │ 跨场景存在
+    │    ├── TimerService    (定时器)                           │ 程序启动时初始化
+    │    ├── DataService     (存档管理)                         │
+    │    ├── UIService       (UI 窗口管理)                      │
+    │    └── ManagerService  (Manager 聚合)                     │
+    │                                                           │
+    ├─── Systems (系统层) ──────────────────────────────────────┤
+    │    ├── RoleSystem      (角色管理)                         │ 全局单例
+    │    ├── StageSystem     (关卡管理)                         │ 跨场景存在
+    │    └── MonoItemSystem  (场景物件管理)                     │
+    │                                                           │
+    └─── GameModes (游戏模式) ──────────────────────────────────┘
+         └── DefaultGameMode (默认模式)
+
+    ┌─── Managers (场景管理器) ────────────────────────────────┐
+    │    通过 ManagerService 动态注册                          │ 场景级别
+    │    跟随场景生命周期                                       │ 场景切换时重置
+    └──────────────────────────────────────────────────────────┘
+```
+
+### 层级职责
+
+| 层级 | 生命周期 | 职责 | 示例 |
+|------|----------|------|------|
+| **Service** | 全局 | 提供基础设施服务，不包含业务逻辑 | 事件、定时器、资源加载 |
+| **System** | 全局 | 管理全局游戏数据和跨场景状态 | 角色系统、关卡系统 |
+| **Manager** | 场景级 | 处理特定场景的业务逻辑 | 战斗管理器、UI管理器 |
+| **GameMode** | 全局 | 控制游戏的整体状态流转 | 主菜单、游戏中、暂停 |
+
+---
+
 ## 目录结构
 
 ```
@@ -55,9 +97,9 @@ Assets/Scripts/Core/
 │   └── ManagerService.cs     # Manager 管理服务
 │
 ├── GameSystem/               # 系统层
-│   └── RoleSystem/           # 角色系统
-│       ├── RoleSystem.cs
-│       └── Player.cs
+│   ├── RoleSystem/           # 角色系统
+│   ├── StageSystem/          # 关卡系统
+│   └── MonoItemSystem/       # 场景物件系统
 │
 ├── Interaction/              # 交互模块
 │   └── FSM/                  # 状态机
@@ -66,30 +108,11 @@ Assets/Scripts/Core/
 │
 └── Utils/                    # 工具扩展
     ├── LogExtensions.cs      # 日志扩展
+    ├── DOTweenExtensions.cs  # DOTween 扩展
     └── UnityExtensions.cs    # Unity 扩展方法
 ```
 
-## 架构图
-
-```
-GameRoot (单例服务定位器)
-    │
-    ├─── Services (服务层)
-    │    ├── InputService    (输入)
-    │    ├── EventService    (事件系统)
-    │    ├── ResService      (资源加载/对象池)
-    │    ├── AudioService    (音频播放)
-    │    ├── TimerService    (定时器)
-    │    ├── DataService     (存档管理)
-    │    ├── UIService       (UI 窗口管理)
-    │    └── ManagerService  (Manager 聚合)
-    │
-    ├─── Systems (系统层)
-    │    └── RoleSystem      (角色管理)
-    │
-    └─── GameModes (游戏模式)
-         └── DefaultGameMode (默认模式)
-```
+---
 
 ## 快速开始
 
@@ -100,84 +123,554 @@ GameRoot (单例服务定位器)
 ### 2. 访问服务
 
 ```csharp
-// 获取服务
-var inputService = GameRoot.Instance.inputService;
-var eventService = GameRoot.Instance.eventService;
-var timerService = GameRoot.Instance.timerService;
+// 获取服务（推荐在 OnAwake/OnInit 中缓存引用）
+var gameRoot = GameRoot.Instance;
+var inputService = gameRoot.inputService;
+var eventService = gameRoot.eventService;
+var timerService = gameRoot.timerService;
+var resService = gameRoot.resService;
+var uiService = gameRoot.uIService;
 ```
 
-### 3. 使用事件系统
+---
+
+## Service 服务层详解
+
+Service 是框架的基础设施层，提供通用功能，不包含具体业务逻辑。
+
+### EventService 事件服务
+
+基于枚举的事件系统，支持即时事件和分帧队列事件。
 
 ```csharp
-// 注册事件
+// 1. 在 EventService.cs 中定义事件 ID
+public enum EventID
+{
+    OnHitTarget,
+    OnGamePlayOver,
+    OnStageLoadComplete,
+    // 添加自定义事件...
+}
+
+// 2. 注册事件监听
 eventService.AddEventListening(EventID.OnHitTarget, OnHitTarget);
 
-// 发送事件
+// 3. 发送事件（立即处理）
 eventService.SendMessage(EventID.OnHitTarget, target, damage);
 
-// 事件处理
+// 4. 发送事件（分帧队列处理，适合大量事件）
+eventService.SendMessageByQue(EventID.OnHitTarget, target, damage);
+
+// 5. 事件处理函数（最多支持2个参数，超过请封装成类）
 private void OnHitTarget(object param1, object param2)
 {
     var target = param1 as GameObject;
     var damage = (int)param2;
 }
+
+// 6. 注销事件
+eventService.RemoveEventListeningByTarget(this);  // 移除该对象所有事件
+eventService.RemoveEventListeningByID(EventID.OnHitTarget);  // 移除某类事件
 ```
 
-### 4. 使用定时器
+### TimerService 定时器服务
+
+支持多种时间类型的定时器系统。
 
 ```csharp
-// 添加延迟调用
+// 时间类型
+// - TimerType.RealTime: 真实时间，不受 TimeScale 影响
+// - TimerType.ScaledTime: 受 TimeScale 影响的游戏时间
+// - TimerType.UnscaledTime: 不受 TimeScale 影响的游戏时间
+
+// 1. 添加延迟调用（单位：毫秒）
 int timerId = timerService.AddTimer(2000, () => Debug.Log("2秒后执行"));
 
-// 添加循环定时器
-int loopId = timerService.AddLoopTimer(TimerType.ScaledTime, 1000, OnTick, null, OnLoopEnd, 5);
+// 2. 添加指定时间类型的定时器
+int timerId = timerService.AddTimer(TimerType.ScaledTime, 1000, OnTimerTick);
 
-// 取消定时器
-timerService.RemoveTimer(timerId);
+// 3. 添加循环定时器（执行5次）
+int loopId = timerService.AddLoopTimer(
+    TimerType.ScaledTime,  // 时间类型
+    1000,                  // 间隔（毫秒）
+    OnTick,                // 每次回调
+    OnCancel,              // 取消回调（可选）
+    OnLoopEnd,             // 循环结束回调（可选）
+    5                      // 循环次数
+);
+
+// 4. 控制定时器
+timerService.RemoveTimer(timerId);           // 移除
+timerService.StopTimer(timerId);             // 暂停
+timerService.EnableTimer(timerId);           // 恢复
+timerService.AdjustTimer(timerId, 500);      // 调整时间（+500ms）
+int remaining = timerService.QueryRemaining(timerId);  // 查询剩余时间
 ```
 
-### 5. 创建自定义 Manager
+### UIService UI 服务
+
+管理 UI 窗口的打开、关闭和层级。
 
 ```csharp
-public class MyManager : ManagerBase
+// 打开窗口
+var window = uiService.OpenWindow<MyWindow>(WindowLayer.Normal);
+
+// 关闭窗口
+uiService.CloseWindow<MyWindow>();
+
+// 获取已打开的窗口
+var window = uiService.GetWindow<MyWindow>();
+```
+
+### ManagerService 管理器服务
+
+动态注册和管理场景级别的 Manager。
+
+```csharp
+// 注册 Manager（通常在 Manager 的 Awake 中调用）
+GameRoot.Instance.managerService.RegisterManager(this);
+
+// 获取其他 Manager
+var battleManager = managerService.GetManager<BattleManager>();
+
+// 场景退出时通知所有 Manager
+managerService.OnSceneExit();
+
+// 清空所有 Manager
+managerService.ClearAllManagers();
+```
+
+---
+
+## System 系统层详解
+
+System 管理全局游戏数据，跨场景持久存在。
+
+### 创建自定义 System
+
+```csharp
+public class InventorySystem : ILogic
 {
-    public override void OnAwake()
+    private Dictionary<string, int> items = new Dictionary<string, int>();
+
+    public void OnInit()
     {
-        base.OnAwake();
-        // 初始化逻辑
+        // 程序启动时初始化
+        items.Clear();
     }
 
-    public override void OnShow()
+    public void OnEnterState()
     {
-        // 每次场景加载时调用
+        // 每次进入场景时调用
+    }
+
+    public void OnUpdate()
+    {
+        // 每帧更新（如果需要）
+    }
+
+    public void UnInit()
+    {
+        // 程序退出时清理
+    }
+
+    // 自定义方法
+    public void AddItem(string itemId, int count)
+    {
+        if (items.ContainsKey(itemId))
+            items[itemId] += count;
+        else
+            items[itemId] = count;
+    }
+
+    public int GetItemCount(string itemId)
+    {
+        return items.TryGetValue(itemId, out var count) ? count : 0;
     }
 }
 ```
 
-### 6. 创建自定义游戏模式
+在 GameRoot.cs 中注册：
 
 ```csharp
-public class MyGameMode : GameModeBase
+// 在 Start() 的系统初始化区域添加
+public InventorySystem inventorySystem;
+
+// 在 #region 初始化系统模块 中
+inventorySystem = new InventorySystem();
+systemList.Add(inventorySystem);
+```
+
+### RoleSystem 角色系统
+
+管理玩家角色的注册、获取和卸载。
+
+```csharp
+// 注册玩家
+roleSystem.RegisterPlayer("player_1", playerInstance);
+
+// 设置当前玩家
+roleSystem.SetCurrentPlayer("player_1");
+
+// 获取当前玩家
+var player = roleSystem.CurrentPlayer;
+
+// 获取指定玩家
+var player = roleSystem.GetPlayer("player_1");
+
+// 获取所有玩家
+var allPlayers = roleSystem.GetAllPlayers();
+
+// 卸载玩家
+roleSystem.UnloadPlayer("player_1");
+roleSystem.UnloadAllPlayers();
+```
+
+---
+
+## Manager 管理器层详解
+
+Manager 处理特定场景的业务逻辑，生命周期跟随场景。
+
+### 创建自定义 Manager
+
+```csharp
+public class BattleManager : ManagerBase
 {
-    public MyGameMode() : base(GameMode.GamePlay) { }
+    private int score;
+    private bool isPaused;
+
+    /// <summary>初始化时调用一次（注册后立即调用）</summary>
+    public override void OnAwake()
+    {
+        base.OnAwake();  // 重要：调用基类以注入服务引用
+
+        // 初始化逻辑
+        score = 0;
+        isPaused = false;
+
+        // 注册事件
+        eventService.AddEventListening(EventID.OnHitTarget, OnHitTarget);
+    }
+
+    /// <summary>每次场景加载/切换时调用</summary>
+    public override void OnShow()
+    {
+        // 场景显示时的逻辑
+        ResetBattle();
+    }
+
+    /// <summary>场景退出时调用</summary>
+    public override void OnExit()
+    {
+        // 场景退出时的清理
+        SaveProgress();
+    }
+
+    /// <summary>Manager 注销时调用</summary>
+    public override void UnInit()
+    {
+        // 最终清理，移除事件监听等
+        eventService.RemoveEventListeningByTarget(this);
+    }
+
+    // 自定义方法
+    private void OnHitTarget(object param1, object param2)
+    {
+        score += (int)param2;
+    }
+
+    public void PauseBattle()
+    {
+        isPaused = true;
+        gameRoot.CancelInput();  // 使用注入的 gameRoot
+    }
+
+    public void ResumeBattle()
+    {
+        isPaused = false;
+        gameRoot.ResetInput();
+    }
+}
+```
+
+### Manager 的注册方式
+
+**方式一：在场景中作为组件**
+
+```csharp
+public class BattleManager : ManagerBase
+{
+    private void Awake()
+    {
+        // 自动注册到 ManagerService
+        GameRoot.Instance.managerService.RegisterManager(this);
+    }
+}
+```
+
+**方式二：在 GameMode 中动态创建**
+
+```csharp
+public class BattleGameMode : GameModeBase
+{
+    public override void EnterGameMode()
+    {
+        base.EnterGameMode();
+
+        // 创建并注册 Manager
+        var go = new GameObject("BattleManager");
+        var manager = go.AddComponent<BattleManager>();
+        managerService.RegisterManager(manager);
+    }
+}
+```
+
+---
+
+## GameMode 游戏模式详解
+
+GameMode 控制游戏的整体状态流转。
+
+### 创建自定义 GameMode
+
+```csharp
+public class BattleGameMode : GameModeBase
+{
+    public BattleGameMode() : base(GameMode.GamePlay) { }
 
     public override void EnterGameMode()
     {
         base.EnterGameMode();
-        // 进入模式时的初始化
+
+        // 进入战斗模式
+        uIService.OpenWindow<BattleHUD>(WindowLayer.Normal);
+
+        // 添加定时器
+        timerService.AddLoopTimer(TimerType.ScaledTime, 1000, UpdateTimer, null, null, -1);
     }
 
     public override void OnUpdate()
     {
-        // 每帧更新
+        // 每帧更新战斗逻辑
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            GameRoot.ChangeGameMode(GameMode.Pause);
+        }
     }
 
     public override void UnOnInit()
     {
-        // 退出模式时的清理
+        // 退出战斗模式时清理
+        uIService.CloseWindow<BattleHUD>();
+    }
+
+    private void UpdateTimer()
+    {
+        // 更新游戏计时器
     }
 }
 ```
+
+### 注册和切换 GameMode
+
+```csharp
+// 1. 在 GameEnum.cs 中添加枚举值
+public enum GameMode
+{
+    GameStart,
+    MainMenu,
+    GamePlay,
+    Pause,
+    GameOver,
+}
+
+// 2. 在 GameRoot.InitGameModes() 中注册
+private void InitGameModes()
+{
+    RegisterGameMode(new DefaultGameMode());
+    RegisterGameMode(new MainMenuGameMode());
+    RegisterGameMode(new BattleGameMode());
+    RegisterGameMode(new PauseGameMode());
+
+    // 设置初始模式
+    if (GameModeDic.TryGetValue(GameMode.GameStart, out var defaultMode))
+    {
+        currentGameMode = defaultMode;
+        currentGameMode.EnterGameMode();
+    }
+}
+
+// 3. 切换游戏模式
+GameRoot.Instance.ChangeGameMode(GameMode.GamePlay);
+```
+
+---
+
+## UI 窗口系统
+
+### 创建自定义窗口
+
+```csharp
+public class SettingsWindow : WindowBase
+{
+    [SerializeField] private Button closeButton;
+    [SerializeField] private Slider volumeSlider;
+    [SerializeField] private Toggle musicToggle;
+
+    public override void OnAwake()
+    {
+        base.OnAwake();  // 重要：注入服务引用
+
+        // 绑定按钮事件
+        AddButtonListener(closeButton, OnCloseClick);
+
+        // 绑定 Toggle 事件
+        AddToggleListener(musicToggle, OnMusicToggleChanged);
+    }
+
+    public override void OnShow()
+    {
+        // 窗口显示时刷新数据
+        volumeSlider.value = dataService.GameData.volume;
+        musicToggle.isOn = dataService.GameData.musicEnabled;
+    }
+
+    public override void OnHide()
+    {
+        // 窗口隐藏时保存数据
+        dataService.SaveGameData();
+    }
+
+    public override void OnUpdate()
+    {
+        // 每帧更新（如果需要）
+    }
+
+    public override void OnDestroy()
+    {
+        // 窗口销毁时清理
+        base.OnDestroy();  // 自动移除所有监听
+    }
+
+    private void OnCloseClick()
+    {
+        uIService.CloseWindow<SettingsWindow>();
+    }
+
+    private void OnMusicToggleChanged(Toggle toggle, bool isOn)
+    {
+        audioService.SetMusicEnabled(isOn);
+    }
+}
+```
+
+### 使用 UIListener 绑定自定义事件
+
+```csharp
+public class ItemSlot : WindowBase
+{
+    [SerializeField] private UIListener slotListener;
+
+    public override void OnAwake()
+    {
+        base.OnAwake();
+
+        // 绑定点击事件
+        OnClick(slotListener, OnSlotClick, "itemId_001");
+
+        // 绑定拖拽事件
+        OnDrag(slotListener, OnSlotDrag);
+
+        // 绑定鼠标进入/离开
+        OnEnter(slotListener, OnSlotEnter);
+        OnExit(slotListener, OnSlotExit);
+    }
+
+    private void OnSlotClick(PointerEventData eventData, UIListener listener, object[] args)
+    {
+        string itemId = args[0] as string;
+        Debug.Log($"Clicked item: {itemId}");
+    }
+
+    private void OnSlotDrag(PointerEventData eventData, UIListener listener, object[] args)
+    {
+        // 处理拖拽
+    }
+}
+```
+
+---
+
+## 生命周期图
+
+```
+程序启动
+    │
+    ▼
+GameRoot.Start()
+    │
+    ├── Service.OnInit() ──────────────► 所有服务初始化
+    │
+    ├── System.OnInit() ───────────────► 所有系统初始化
+    │
+    └── GameMode.EnterGameMode() ──────► 进入初始游戏模式
+
+每帧更新
+    │
+    ▼
+GameRoot.Update()
+    │
+    ├── GameMode.OnUpdate()
+    ├── Service.OnUpdate()
+    └── System.OnUpdate()
+
+场景切换
+    │
+    ▼
+GameRoot.OnEnterState()
+    │
+    ├── Service.OnEnterState()
+    ├── System.OnEnterState()
+    └── Manager.OnShow() ──────────────► 通过 ManagerService
+
+程序退出
+    │
+    ▼
+GameRoot.OnApplicationQuit()
+    │
+    ├── System.UnInit() (逆序)
+    └── Service.UnInit() (逆序)
+```
+
+---
+
+## 输入控制
+
+框架提供了输入通道系统，用于在不同状态下控制输入。
+
+```csharp
+// 锁定所有输入（如：过场动画）
+gameRoot.CancelInput();
+
+// 恢复输入
+gameRoot.ResetInput();
+
+// 锁定特定通道
+gameRoot.LockInputChannel(InputChannel.Gameplay, this);
+gameRoot.LockInputChannel(InputChannel.UI, this);
+
+// 解锁特定通道
+gameRoot.UnlockInputChannel(InputChannel.Gameplay, this);
+
+// 检查通道是否可用
+if (gameRoot.IsInputChannelAvailable(InputChannel.Gameplay))
+{
+    // 处理游戏输入
+}
+```
+
+---
 
 ## 扩展指南
 
@@ -191,9 +684,23 @@ public class MyGameMode : GameModeBase
 2. 在 `GameRoot.InitGameModes()` 中注册
 3. 在 `GameEnum.cs` 中添加对应的枚举值
 
+### 添加新的 Service
+
+1. 创建实现 `ILogic` 接口的新类
+2. 在 `GameRoot.Start()` 中实例化并添加到 `serviceList`
+3. 在 `GameRoot` 中添加公开字段以供访问
+
+### 添加新的 System
+
+1. 创建实现 `ILogic` 接口的新类
+2. 在 `GameRoot.Start()` 中实例化并添加到 `systemList`
+3. 在 `GameRoot` 中添加公开字段以供访问
+
 ### 扩展 GameData
 
 在 `DataService.cs` 中的 `GameData` 类添加新的字段来保存游戏数据。
+
+---
 
 ## 依赖项
 
@@ -201,8 +708,11 @@ public class MyGameMode : GameModeBase
 - Unity Input System Package
 - **DOTween** - 动画库 (Asset Store 或 OpenUPM)
 - **Odin Inspector** - 编辑器增强 (Asset Store)
+- **Naninovel** - 视觉小说引擎 (可选，需要定义 NANINOVEL 宏)
 
 > 如果不想安装 Odin Inspector，可以移除 GameRoot.cs 中的 `#region Inspector Debug (Odin)` 区域和相关 using 语句。
+
+---
 
 ## 许可
 
