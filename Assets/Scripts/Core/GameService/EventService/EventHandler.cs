@@ -40,9 +40,12 @@ public class EventHandler<T>
 
     /// <summary>
     /// 每帧处理队列中的事件（分帧处理）
+    /// <para>注意：每帧仅处理一条消息，用于分散负载避免大量事件同帧执行导致卡顿。</para>
+    /// <para>如需立即处理所有消息，请使用 <see cref="SentMessage"/> 而非 <see cref="SentMessageByQue"/>。</para>
     /// </summary>
     public void OnEventUpdate()
     {
+        // 刻意每帧只处理一条，分散负载
         if (eventQueue.Count > 0)
         {
             var eventMessage = eventQueue.Dequeue();
@@ -93,6 +96,8 @@ public class EventHandler<T>
 
     /// <summary>
     /// 通过队列发送消息（分帧处理）
+    /// <para>消息将被加入队列，每帧仅处理一条。适用于非时序敏感的事件。</para>
+    /// <para>如需立即处理，请使用 <see cref="SentMessage"/>。</para>
     /// </summary>
     public void SentMessageByQue(T id, object param1, object param2)
     {

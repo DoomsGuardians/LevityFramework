@@ -86,10 +86,6 @@ public class StageConfigItem
     [InlineEditor(ObjectFieldMode = InlineEditorObjectFieldModes.Foldout)]
     public GameObject camera;
 
-    [FoldoutGroup("Camera & FX")]
-    [LabelText("Load FX"), InlineEditor(ObjectFieldMode = InlineEditorObjectFieldModes.Foldout)]
-    public LoadSceneFXRegister loadSceneFXRegister;
-
 #if NANINOVEL
     [FoldoutGroup("Narrative"), InlineProperty, HideLabel]
     public NaninovelStageFlow naninovelFlow = new();

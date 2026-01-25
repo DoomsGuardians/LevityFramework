@@ -14,6 +14,19 @@ public class EventHandlerBase<T>
     private readonly Dictionary<object, List<T>> targetEventDic = new Dictionary<object, List<T>>();
 
     /// <summary>
+    /// 静态方法的哨兵对象（用于 action.Target 为 null 时作为字典 key）
+    /// </summary>
+    private static readonly object StaticMethodSentinel = new object();
+
+    /// <summary>
+    /// 获取事件目标（静态方法返回哨兵对象，避免 null key 异常）
+    /// </summary>
+    private object GetTargetKey(Action<object, object> action)
+    {
+        return action.Target ?? StaticMethodSentinel;
+    }
+
+    /// <summary>
     /// 添加事件监听
     /// </summary>
     public void AddEventHandler(T id, Action<object, object> action)
@@ -33,8 +46,8 @@ public class EventHandlerBase<T>
 
         eventList.Add(action);
 
-        // 更新从属者信息
-        object target = action.Target;
+        // 更新从属者信息（使用哨兵处理静态方法）
+        object target = GetTargetKey(action);
         if (!targetEventDic.ContainsKey(target))
         {
             targetEventDic[target] = new List<T>();
@@ -52,8 +65,8 @@ public class EventHandlerBase<T>
             List<Action<object, object>> actions = eventDic[id];
             foreach (var action in actions)
             {
-                object target = action.Target;
-                if (target != null && targetEventDic.ContainsKey(target))
+                object target = GetTargetKey(action);
+                if (targetEventDic.ContainsKey(target))
                 {
                     List<T> idList = targetEventDic[target];
                     idList.RemoveAll(eventId => eventId.Equals(id));
@@ -69,25 +82,29 @@ public class EventHandlerBase<T>
 
     /// <summary>
     /// 通过目标对象移除其所有注册的事件
+    /// 传入 null 可移除所有静态方法注册的事件
     /// </summary>
     public void RemoveEventByTarget(object target)
     {
-        if (targetEventDic.ContainsKey(target))
+        // 将 null 转换为哨兵 key
+        object targetKey = target ?? StaticMethodSentinel;
+
+        if (targetEventDic.ContainsKey(targetKey))
         {
-            List<T> idList = targetEventDic[target];
+            List<T> idList = targetEventDic[targetKey];
             foreach (var id in idList)
             {
                 if (eventDic.ContainsKey(id))
                 {
                     List<Action<object, object>> actions = eventDic[id];
-                    actions.RemoveAll(action => action.Target == target);
+                    actions.RemoveAll(action => GetTargetKey(action) == targetKey);
                     if (actions.Count == 0)
                     {
                         eventDic.Remove(id);
                     }
                 }
             }
-            targetEventDic.Remove(target);
+            targetEventDic.Remove(targetKey);
         }
     }
 

@@ -5,7 +5,7 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 关卡系统：加载关卡、初始化 Manager、处理场景转换、执行屏幕特效
+/// 关卡系统：加载关卡、初始化 Manager、处理场景转换
 /// </summary>
 public class StageSystem : ILogic
 {
@@ -76,7 +76,7 @@ public class StageSystem : ILogic
             return;
         }
 
-        // 通知 Manager 和 RoleSystem 退出
+        // 通知 Manager 退出
         managerService.OnSceneExit();
 
         // 卸载当前场景的 MonoItem
@@ -89,21 +89,10 @@ public class StageSystem : ILogic
         }
 
         // 构建加载完成回调
-        doneLoadTask += () =>
-        {
-            OnStageLoaded();
-        };
+        doneLoadTask += OnStageLoaded;
 
-        // 执行退出场景的屏幕特效
-        if (currentStageConfig.loadSceneFXRegister != null && currentStageConfig.loadSceneFXRegister.exitStateLogic != null)
-        {
-            currentStageConfig.loadSceneFXRegister.exitStateLogic.Execute(
-                () => SetStage(currentStageConfig, doneLoadTask), -1, null);
-        }
-        else
-        {
-            SetStage(currentStageConfig, doneLoadTask);
-        }
+        // 直接加载场景
+        SetStage(currentStageConfig, doneLoadTask);
     }
 
     /// <summary>
@@ -111,44 +100,29 @@ public class StageSystem : ILogic
     /// </summary>
     private void OnStageLoaded()
     {
-        // 执行进入场景的屏幕特效
-        if (currentStageConfig.loadSceneFXRegister != null && currentStageConfig.loadSceneFXRegister.enterStageLogic != null)
-        {
-            currentStageConfig.loadSceneFXRegister.enterStageLogic.Execute(() =>
-            {
-                this.LogYellow($"Started Game Mode: {currentStageConfig.gameMode}");
-                gameRoot.currentGameMode?.StartGame();
-            }, 1, null);
-        }
-
-        // 服务层进入状态
+        // 1. 服务层进入状态
         gameRoot.OnEnterState();
 
-        // 切换游戏模式
+        // 2. 切换游戏模式
         gameRoot.ChangeGameMode(currentStageConfig.gameMode);
 
-        // 恢复输入
+        // 3. 恢复输入
         gameRoot.ResetInput();
-
-        // UI 窗口初始化
-        // uiService.SwitchBaseLayerUI(currentStageConfig.UIWindowBase);
-
-        // 玩家角色初始化
-        // roleSystem?.LoadRole(currentStageConfig.RoleConfig);
-
-        // Manager 初始化
-        // managerService.UpdateManager(currentStageConfig.GameMangers);
 
 #if NANINOVEL
         // Naninovel 配置应用
         naninovelService?.ApplyStageConfig(currentStageConfig);
 #endif
 
-        // MonoItem 初始化
+        // 4. MonoItem 初始化
         monoItemSystem?.InitMonoItem();
 
-        // 发送初始化完成事件
+        // 5. 发送初始化完成事件
         eventService?.SendMessage(EventID.OnInitDone, null, null);
+
+        // 6. 启动游戏模式（所有初始化完成后）
+        this.LogYellow($"Started Game Mode: {currentStageConfig.gameMode}");
+        gameRoot.currentGameMode?.StartGame();
     }
 
     /// <summary>

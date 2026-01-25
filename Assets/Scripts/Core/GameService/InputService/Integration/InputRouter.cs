@@ -70,66 +70,104 @@ public static class InputRouter
     {
         if (enabled[channel] == on) return;
 
+        bool success = false;
         switch (channel)
         {
             case InputChannel.Gameplay:
-                ToggleGameplayInput(on);
+                success = TryToggleGameplayInput(on);
                 break;
             case InputChannel.UI:
-                ToggleUIInput(on);
+                success = TryToggleUIInput(on);
                 break;
             case InputChannel.Naninovel:
-                ToggleNaninovelInput(on);
+                success = TryToggleNaninovelInput(on);
                 break;
         }
 
-        enabled[channel] = on;
+        // 只有实际执行成功才更新状态，避免状态与实际不同步
+        if (success)
+        {
+            enabled[channel] = on;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[InputRouter] {channel} -> {(on ? "Enabled" : "Disabled")}");
+            Debug.Log($"[InputRouter] {channel} -> {(on ? "Enabled" : "Disabled")}");
 #endif
+        }
     }
 
-    // 启停 Gameplay 输入
-    private static void ToggleGameplayInput(bool on)
+    /// <summary>
+    /// 尝试切换 Gameplay 输入
+    /// </summary>
+    /// <returns>是否成功执行</returns>
+    private static bool TryToggleGameplayInput(bool on)
     {
-        var svc = GameRoot.Instance?.inputService;
-        if (svc == null) return;
+        // 安全检查：避免在 GameRoot 未初始化时访问导致意外行为
+        if (!IsGameRootInitialized())
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogWarning("[InputRouter] GameRoot 或 InputService 未初始化，跳过输入切换");
+#endif
+            return false;
+        }
 
+        var svc = GameRoot.Instance.inputService;
         try
         {
             if (on)
                 svc.EnableInput();
             else
                 svc.DisableInput();
+            return true;
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"[InputRouter] ToggleGameplayInput failed: {ex.Message}");
+            return false;
         }
     }
 
-    // 启停 UI 输入
-    private static void ToggleUIInput(bool on)
+    /// <summary>
+    /// 检查 GameRoot 是否已初始化且 InputService 可用
+    /// 使用 FindAnyObjectByType 避免触发 MonoSingleton 自动创建
+    /// </summary>
+    private static bool IsGameRootInitialized()
+    {
+        var gameRoot = UnityEngine.Object.FindAnyObjectByType<GameRoot>();
+        return gameRoot != null && gameRoot.inputService != null;
+    }
+
+    /// <summary>
+    /// 尝试切换 UI 输入
+    /// </summary>
+    /// <returns>是否成功执行</returns>
+    private static bool TryToggleUIInput(bool on)
     {
         // 可根据项目需要实现 UI 输入的启停
         // 例如通过 EventSystem 或 UI InputActionMap
+        return true; // 默认成功（空实现）
     }
 
-    // 启停 Naninovel 的输入
-    private static void ToggleNaninovelInput(bool on)
+    /// <summary>
+    /// 尝试切换 Naninovel 输入
+    /// </summary>
+    /// <returns>是否成功执行</returns>
+    private static bool TryToggleNaninovelInput(bool on)
     {
 #if NANINOVEL
         try
         {
-            if (!Naninovel.Engine.Initialized) return;
+            if (!Naninovel.Engine.Initialized) return false;
             var m = Naninovel.Engine.GetService<Naninovel.IInputManager>();
-            if (m == null) return;
+            if (m == null) return false;
             m.ProcessInput = on;
+            return true;
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"[InputRouter] ToggleNaninovel failed: {ex.Message}");
+            return false;
         }
+#else
+        return true; // 无 Naninovel 时默认成功
 #endif
     }
 
