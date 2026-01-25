@@ -1,0 +1,120 @@
+# =============== #
+# Unity generated #
+# =============== #
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+# ============== #
+# Memory Captures
+# ============== #
+[Mm]emoryCaptures/
+
+# ============================= #
+# Asset Bundles and Addressables
+# ============================= #
+[Aa]sset[Bb]undles/
+[Ss]treaming[Aa]ssets/[Aa][Aa]/
+
+# ===================== #
+# Visual Studio / Rider #
+# ===================== #
+.vs/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+.idea/
+
+# ============ #
+# OS generated #
+# ============ #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ========= #
+# Packages  #
+# ========= #
+*.unitypackage
+
+# ======================== #
+# Crashlytics and Firebase #
+# ======================== #
+crashlytics-build.properties
+sysinfo.txt
+google-services.json
+GoogleService-Info.plist
+
+# ================== #
+# Plastic/PlasticSCM #
+# ================== #
+*.private.0
+*.private
+plastic.selector
+.plastic/
+
+# =========== #
+# Gradle/JDK  #
+# =========== #
+.gradle/
+ExportedObj/
+*.apk
+*.aab
+*.obb
+*.unitypackage
+
+# =================== #
+# Code Coverage/Tests #
+# =================== #
+[Cc]ode[Cc]overage/
+TestResults*.xml
+
+# ===================== #
+# Recordings and Videos #
+# ===================== #
+[Rr]ecordings/
+
+# =========== #
+# TextMeshPro #
+# =========== #
+Assets/TextMesh Pro/
+
+# ========= #
+# Plugins   #
+# ========= #
+# Uncomment if you don't want to track plugin source
+# Assets/Plugins/
+
+# ============= #
+# Exclude large #
+# binary assets #
+# ============= #
+# *.psd
+# *.fbx
+# *.tga
+
+# ========== #
+# Local test #
+# ========== #
+**/[Tt]est[Ss]cenes/
+**/[Ss]andbox/
