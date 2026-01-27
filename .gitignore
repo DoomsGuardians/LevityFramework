@@ -35,8 +35,6 @@
 *.pidb
 *.booproj
 *.svd
-*.pdb
-*.mdb
 *.opendb
 *.VC.db
 .idea/
@@ -51,11 +49,6 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# ========= #
-# Packages  #
-# ========= #
-*.unitypackage
 
 # ======================== #
 # Crashlytics and Firebase #
@@ -81,7 +74,6 @@ ExportedObj/
 *.apk
 *.aab
 *.obb
-*.unitypackage
 
 # =================== #
 # Code Coverage/Tests #
@@ -93,11 +85,6 @@ TestResults*.xml
 # Recordings and Videos #
 # ===================== #
 [Rr]ecordings/
-
-# =========== #
-# TextMeshPro #
-# =========== #
-Assets/TextMesh Pro/
 
 # ========= #
 # Plugins   #
