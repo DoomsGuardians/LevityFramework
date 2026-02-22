@@ -33,7 +33,6 @@ public class GameRoot : MonoSingleton<GameRoot>
     public UIService uIService;
     public ResService resService;
     public InputService inputService;
-    public EventService eventService;
     public TimerService timerService;
     public ManagerService managerService;
     public AudioService audioService;
@@ -124,8 +123,6 @@ public class GameRoot : MonoSingleton<GameRoot>
         serviceList.Add(uIService);
         inputService = new InputService();
         serviceList.Add(inputService);
-        eventService = new EventService();
-        serviceList.Add(eventService);
         managerService = new ManagerService();
         serviceList.Add(managerService);
         audioService = new AudioService();

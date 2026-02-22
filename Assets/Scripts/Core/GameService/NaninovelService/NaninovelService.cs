@@ -10,6 +10,7 @@ using System.Threading;
 using Naninovel;
 using Naninovel.Async;
 using UnityEngine;
+using LevityEvents;
 
 /// <summary>
 /// Naninovel 视觉小说框架的集成服务
@@ -25,7 +26,6 @@ public class NaninovelService : ILogic
     private IScriptPlayer scriptPlayer;
 
     private GameRoot gameRoot;
-    private EventService eventService;
     private InputService inputService;
 
     private CancellationTokenSource lifetimeCts;
@@ -44,7 +44,6 @@ public class NaninovelService : ILogic
     public void OnInit()
     {
         gameRoot = GameRoot.Instance;
-        eventService = gameRoot?.eventService;
         inputService = gameRoot?.inputService;
 
         lifetimeCts = new CancellationTokenSource();
@@ -261,7 +260,7 @@ public class NaninovelService : ILogic
 
             initializationSucceeded = true;
             initializationFailed = false;
-            eventService?.SendMessage(EventID.OnDialogueServiceReady, null, null);
+            EventBus<DialogueServiceReadyEvent>.Raise();
         }
         catch (Exception ex)
         {
@@ -293,14 +292,14 @@ public class NaninovelService : ILogic
         currentScriptPath = script?.Path;
         activePlaybackLabel = pendingStartLabel;
         pendingStartLabel = null;
-        eventService?.SendMessage(EventID.OnDialogueStart, currentScriptPath, activePlaybackLabel);
+        EventBus<DialogueStartEvent>.Raise(new DialogueStartEvent { ScriptName = currentScriptPath });
         UpdateNaninovelCameraState();
     }
 
     private void HandleScriptStop(Script script)
     {
         var path = script?.Path ?? currentScriptPath;
-        eventService?.SendMessage(EventID.OnDialogueEnd, path, activePlaybackLabel);
+        EventBus<DialogueEndEvent>.Raise(new DialogueEndEvent { ScriptName = path });
         currentScriptPath = null;
         activePlaybackLabel = null;
         UpdateNaninovelCameraState(forceDisable: true);

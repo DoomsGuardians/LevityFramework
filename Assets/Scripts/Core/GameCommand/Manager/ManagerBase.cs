@@ -15,7 +15,6 @@ public class ManagerBase : MonoBehaviour, IMonoLogic
     protected InputService inputService;
     protected TimerService timerService;
     protected ManagerService managerService;
-    protected EventService eventService;
     protected DataService dataService;
     protected UIService uiService;
 
@@ -28,7 +27,6 @@ public class ManagerBase : MonoBehaviour, IMonoLogic
         inputService = gameRoot.inputService;
         timerService = gameRoot.timerService;
         managerService = gameRoot.managerService;
-        eventService = gameRoot.eventService;
         dataService = gameRoot.dataService;
         uiService = gameRoot.uIService;
     }

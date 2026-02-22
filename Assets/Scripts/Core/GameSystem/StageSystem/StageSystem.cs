@@ -3,6 +3,7 @@
 
 using System;
 using UnityEngine;
+using LevityEvents;
 
 /// <summary>
 /// 关卡系统：加载关卡、初始化 Manager、处理场景转换
@@ -14,7 +15,6 @@ public class StageSystem : ILogic
     private ManagerService managerService;
     private RoleSystem roleSystem;
     private UIService uiService;
-    private EventService eventService;
     private DataService dataService;
     private MonoItemSystem monoItemSystem;
 
@@ -32,7 +32,6 @@ public class StageSystem : ILogic
         managerService = gameRoot.managerService;
         roleSystem = gameRoot.roleSystem;
         uiService = gameRoot.uIService;
-        eventService = gameRoot.eventService;
         dataService = gameRoot.dataService;
         monoItemSystem = gameRoot.monoItemSystem;
 
@@ -118,7 +117,7 @@ public class StageSystem : ILogic
         monoItemSystem?.InitMonoItem();
 
         // 5. 发送初始化完成事件
-        eventService?.SendMessage(EventID.OnInitDone, null, null);
+        EventBus<InitDoneEvent>.Raise();
 
         // 6. 启动游戏模式（所有初始化完成后）
         this.LogYellow($"Started Game Mode: {currentStageConfig.gameMode}");

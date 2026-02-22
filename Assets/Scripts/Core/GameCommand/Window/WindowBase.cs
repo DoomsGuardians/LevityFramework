@@ -22,7 +22,6 @@ public class WindowBase : WindowBehaviour
     protected GameRoot gameRoot;
     protected UIService uIService;
     protected ResService resService;
-    protected EventService eventService;
     protected AudioService audioService;
     protected DataService dataService;
     protected RoleSystem roleSystem;
@@ -86,7 +85,6 @@ public class WindowBase : WindowBehaviour
         gameRoot = GameRoot.Instance;
         uIService = gameRoot.uIService;
         resService = gameRoot.resService;
-        eventService = gameRoot.eventService;
         audioService = gameRoot.audioService;
         dataService = gameRoot.dataService;
         roleSystem = gameRoot.roleSystem;

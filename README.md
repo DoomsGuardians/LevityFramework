@@ -126,7 +126,6 @@ Assets/Scripts/Core/
 // 获取服务（推荐在 OnAwake/OnInit 中缓存引用）
 var gameRoot = GameRoot.Instance;
 var inputService = gameRoot.inputService;
-var eventService = gameRoot.eventService;
 var timerService = gameRoot.timerService;
 var resService = gameRoot.resService;
 var uiService = gameRoot.uIService;
@@ -138,39 +137,49 @@ var uiService = gameRoot.uIService;
 
 Service 是框架的基础设施层，提供通用功能，不包含具体业务逻辑。
 
-### EventService 事件服务
+### EventBus 泛型事件系统
 
-基于枚举的事件系统，支持即时事件和分帧队列事件。
+基于泛型的强类型事件系统，支持优先级、一次性订阅和自动清理。
 
 ```csharp
-// 1. 在 EventService.cs 中定义事件 ID
-public enum EventID
+using LevityEvents;
+
+// 1. 定义事件结构体（在 PredefinedEvents.cs 或自定义文件中）
+public struct HitTargetEvent : IEvent
 {
-    OnHitTarget,
-    OnGamePlayOver,
-    OnStageLoadComplete,
-    // 添加自定义事件...
+    public GameObject Attacker;
+    public GameObject Target;
+    public float Damage;
 }
 
 // 2. 注册事件监听
-eventService.AddEventListening(EventID.OnHitTarget, OnHitTarget);
+EventBinding<HitTargetEvent> binding = EventBus<HitTargetEvent>.Register(OnHitTarget);
 
-// 3. 发送事件（立即处理）
-eventService.SendMessage(EventID.OnHitTarget, target, damage);
+// 3. 带优先级注册（数字越小越先执行）
+EventBus<HitTargetEvent>.Register(OnHitTarget, priority: -10);
 
-// 4. 发送事件（分帧队列处理，适合大量事件）
-eventService.SendMessageByQue(EventID.OnHitTarget, target, damage);
+// 4. 一次性监听（触发一次后自动注销）
+EventBus<HitTargetEvent>.RegisterOnce(OnHitTarget);
 
-// 5. 事件处理函数（最多支持2个参数，超过请封装成类）
-private void OnHitTarget(object param1, object param2)
+// 5. 发送事件
+EventBus<HitTargetEvent>.Raise(new HitTargetEvent
 {
-    var target = param1 as GameObject;
-    var damage = (int)param2;
+    Attacker = attacker,
+    Target = target,
+    Damage = 50f
+});
+
+// 6. 无参事件
+EventBus<InitDoneEvent>.Raise();
+
+// 7. 事件处理函数
+private void OnHitTarget(HitTargetEvent e)
+{
+    Debug.Log($"{e.Attacker.name} hit {e.Target.name} for {e.Damage} damage");
 }
 
-// 6. 注销事件
-eventService.RemoveEventListeningByTarget(this);  // 移除该对象所有事件
-eventService.RemoveEventListeningByID(EventID.OnHitTarget);  // 移除某类事件
+// 8. 注销事件
+binding.Unregister();
 ```
 
 ### TimerService 定时器服务
@@ -335,10 +344,13 @@ Manager 处理特定场景的业务逻辑，生命周期跟随场景。
 ### 创建自定义 Manager
 
 ```csharp
+using LevityEvents;
+
 public class BattleManager : ManagerBase
 {
     private int score;
     private bool isPaused;
+    private EventBinding<HitTargetEvent> hitBinding;
 
     /// <summary>初始化时调用一次（注册后立即调用）</summary>
     public override void OnAwake()
@@ -350,7 +362,7 @@ public class BattleManager : ManagerBase
         isPaused = false;
 
         // 注册事件
-        eventService.AddEventListening(EventID.OnHitTarget, OnHitTarget);
+        hitBinding = EventBus<HitTargetEvent>.Register(OnHitTarget);
     }
 
     /// <summary>每次场景加载/切换时调用</summary>
@@ -371,13 +383,13 @@ public class BattleManager : ManagerBase
     public override void UnInit()
     {
         // 最终清理，移除事件监听等
-        eventService.RemoveEventListeningByTarget(this);
+        hitBinding?.Unregister();
     }
 
     // 自定义方法
-    private void OnHitTarget(object param1, object param2)
+    private void OnHitTarget(HitTargetEvent e)
     {
-        score += (int)param2;
+        score += (int)e.Damage;
     }
 
     public void PauseBattle()

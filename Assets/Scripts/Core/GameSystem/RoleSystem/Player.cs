@@ -10,14 +10,12 @@ public class Player : MonoBehaviour, IMonoLogic
 {
     protected GameRoot gameRoot;
     protected InputService inputService;
-    protected EventService eventService;
     protected TimerService timerService;
 
     public virtual void OnAwake()
     {
         gameRoot = GameRoot.Instance;
         inputService = gameRoot.inputService;
-        eventService = gameRoot.eventService;
         timerService = gameRoot.timerService;
     }
 

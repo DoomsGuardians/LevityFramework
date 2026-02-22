@@ -16,7 +16,6 @@ public abstract class GameModeBase
     protected InputService inputService;
     protected TimerService timerService;
     protected ManagerService managerService;
-    protected EventService eventService;
     protected UIService uIService;
     protected DataService dataService;
 
@@ -29,7 +28,6 @@ public abstract class GameModeBase
         inputService = GameRoot.inputService;
         timerService = GameRoot.timerService;
         managerService = GameRoot.managerService;
-        eventService = GameRoot.eventService;
         uIService = GameRoot.uIService;
         dataService = GameRoot.dataService;
     }
