@@ -48,6 +48,27 @@ public class GameRoot : MonoSingleton<GameRoot>
     public NaninovelService naninovelService;
 #endif
 
+    /// <summary>
+    /// 派生类覆写以注册项目特定的服务（例如自定义存档、网络服务等）。
+    /// 调用时机：所有框架服务已加入 serviceList 但尚未 OnInit。
+    /// 将服务加入传入的列表即可，GameRoot 会负责 OnInit/OnUpdate/UnInit 调度。
+    /// </summary>
+    protected virtual void RegisterCustomServices(List<ILogic> services) { }
+
+    /// <summary>
+    /// 派生类覆写以注册项目特定的系统（例如战斗系统、剧情系统等）。
+    /// 调用时机：所有框架系统已加入 systemList 但尚未 OnInit。
+    /// 将系统加入传入的列表即可，GameRoot 会负责 OnInit/OnUpdate/UnInit 调度。
+    /// </summary>
+    protected virtual void RegisterCustomSystems(List<ILogic> systems) { }
+
+    /// <summary>
+    /// 派生类覆写以注册项目特定的游戏模式。
+    /// 调用时机：框架默认 GameMode 已注册之后、首个 GameMode EnterGameMode 之前。
+    /// 通过 RegisterGameMode 注册即可。
+    /// </summary>
+    protected virtual void RegisterCustomGameModes() { }
+
     // 输入路由器（使用静态类 InputRouter）
 
     // Update 事件
@@ -135,6 +156,8 @@ public class GameRoot : MonoSingleton<GameRoot>
         serviceList.Add(naninovelService);
 #endif
 
+        RegisterCustomServices(serviceList);
+
         foreach (var service in serviceList)
         {
             service.OnInit();
@@ -148,6 +171,8 @@ public class GameRoot : MonoSingleton<GameRoot>
         systemList.Add(stageSystem);
         monoItemSystem = new MonoItemSystem();
         systemList.Add(monoItemSystem);
+
+        RegisterCustomSystems(systemList);
 
         foreach (var system in systemList)
         {
@@ -207,6 +232,8 @@ public class GameRoot : MonoSingleton<GameRoot>
     {
         // 注册默认游戏模式（可根据项目扩展）
         RegisterGameMode(new DefaultGameMode());
+
+        RegisterCustomGameModes();
 
         if (GameModeDic.TryGetValue(GameMode.GameStart, out var defaultMode))
         {

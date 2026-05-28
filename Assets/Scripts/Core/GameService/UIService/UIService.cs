@@ -23,6 +23,7 @@ public class UIService : ILogic
     // UI 根节点
     private Transform uiRoot;
     private Camera uiCamera;
+    private static Camera defaultUICamera;
 
     /// <summary>
     /// 层级管理器
@@ -54,16 +55,38 @@ public class UIService : ILogic
     /// 需要在场景准备好后调用
     /// </summary>
     /// <param name="uiRoot">UI 根节点</param>
-    /// <param name="uiCamera">UI 相机（可选，用于 Screen Space - Camera 模式）</param>
-    public void InitLayerSystem(Transform uiRoot, Camera uiCamera = null)
+    /// <param name="uiCamera">UI 相机；传 null 时使用 <see cref="GetOrCreateDefaultUICamera"/> 提供的全局默认 UI Camera</param>
+    /// <param name="layerRenderModes">层级 → RenderMode 的覆盖；未列出的层级使用默认配置</param>
+    public void InitLayerSystem(Transform uiRoot, Camera uiCamera = null, IDictionary<UILayer, RenderMode> layerRenderModes = null)
     {
         this.uiRoot = uiRoot;
-        this.uiCamera = uiCamera;
+        this.uiCamera = uiCamera != null ? uiCamera : GetOrCreateDefaultUICamera();
 
-        layerManager = new UILayerManager(uiRoot, uiCamera);
-        layerManager.Initialize();
+        layerManager = new UILayerManager(uiRoot, this.uiCamera);
+        layerManager.Initialize(layerRenderModes);
 
         Debug.Log("[UIService] 层级系统初始化完成");
+    }
+
+    /// <summary>
+    /// 获取或创建框架默认的全局 UI Camera。
+    /// 该相机带 DontDestroyOnLoad、不渲染任何 Layer（cullingMask = 0），仅作为 Screen Space - Camera Canvas 的承载相机。
+    /// 适用于场景未自带 UI Camera 时的回退。
+    /// </summary>
+    public Camera GetOrCreateDefaultUICamera()
+    {
+        if (defaultUICamera != null) return defaultUICamera;
+
+        var go = new GameObject("[UIService] DefaultUICamera");
+        UnityEngine.Object.DontDestroyOnLoad(go);
+        defaultUICamera = go.AddComponent<Camera>();
+        defaultUICamera.clearFlags = CameraClearFlags.Depth;
+        defaultUICamera.cullingMask = 0;            // 不渲染任何 Layer，仅作为 Canvas 的 worldCamera 引用
+        defaultUICamera.orthographic = true;
+        defaultUICamera.depth = 100;                 // 排在游戏主相机之后
+        defaultUICamera.nearClipPlane = 0.1f;
+        defaultUICamera.farClipPlane = 100f;
+        return defaultUICamera;
     }
 
     public void OnEnterState() { }
@@ -81,17 +104,42 @@ public class UIService : ILogic
 
     public void UnInit()
     {
-        foreach (var window in windowList)
+        DestroyAllWindowsInternal(resetLayerSystem: true);
+    }
+
+    /// <summary>
+    /// 关闭并销毁所有窗口，重置 Order / Occlusion 状态。
+    /// 适用场景：切换主菜单 / 关卡 / 大场景前的硬清理。
+    /// 与 <see cref="HideAllWindows"/> 的区别：HideAllWindows 保留窗口注册以便后续恢复，
+    /// CloseAllWindows 则把窗口完全销毁、从注册表移除，需要再次显示时必须重新 RegisterWindow。
+    /// </summary>
+    /// <remarks>
+    /// 层级系统（LayerManager）默认保留——层级根节点通常与场景共生，由场景管理；
+    /// 如需连带重建层级，请在调用本方法后自行重新调用 <see cref="InitLayerSystem"/>。
+    /// </remarks>
+    public void CloseAllWindows()
+    {
+        DestroyAllWindowsInternal(resetLayerSystem: false);
+    }
+
+    private void DestroyAllWindowsInternal(bool resetLayerSystem)
+    {
+        // 复制一份避免在 OnDestroy 回调中修改 windowList 引发的迭代异常
+        var snapshot = windowList.ToArray();
+        foreach (var window in snapshot)
         {
             window.OnDestroy();
         }
         windowDic.Clear();
         windowList.Clear();
 
-        // 清理管理器
-        layerManager?.Cleanup();
         occlusionManager?.Clear();
         orderManager?.ResetAll();
+
+        if (resetLayerSystem)
+        {
+            layerManager?.Cleanup();
+        }
     }
 
     /// <summary>

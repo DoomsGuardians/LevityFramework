@@ -9,6 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// UI 层级管理器
 /// 管理 6 层 Canvas 结构，每层对应一个 UILayer 枚举值
+/// 每层独立配置 RenderMode（Overlay / Camera / WorldSpace）
 /// </summary>
 public class UILayerManager
 {
@@ -31,6 +32,22 @@ public class UILayerManager
     };
 
     /// <summary>
+    /// 默认每层 RenderMode 配置。
+    /// Scene 用 WorldSpace；其它默认 Overlay；可在 Initialize 时通过 layerRenderModes 覆盖。
+    /// </summary>
+    private static readonly Dictionary<UILayer, RenderMode> DefaultLayerRenderModes = new Dictionary<UILayer, RenderMode>
+    {
+        { UILayer.Scene, RenderMode.WorldSpace },
+        { UILayer.Background, RenderMode.ScreenSpaceOverlay },
+        { UILayer.Normal, RenderMode.ScreenSpaceOverlay },
+        { UILayer.Info, RenderMode.ScreenSpaceOverlay },
+        { UILayer.Top, RenderMode.ScreenSpaceOverlay },
+        { UILayer.Tip, RenderMode.ScreenSpaceOverlay }
+    };
+
+    private Dictionary<UILayer, RenderMode> activeLayerRenderModes;
+
+    /// <summary>
     /// 创建 UI 层级管理器
     /// </summary>
     /// <param name="uiRoot">UI 根节点</param>
@@ -42,10 +59,29 @@ public class UILayerManager
     }
 
     /// <summary>
-    /// 初始化所有层级 Canvas
+    /// 初始化所有层级 Canvas（使用默认 RenderMode 配置）
     /// </summary>
     public void Initialize()
     {
+        Initialize(null);
+    }
+
+    /// <summary>
+    /// 初始化所有层级 Canvas，可按层级覆盖默认 RenderMode。
+    /// 当指定为 ScreenSpaceCamera 时需要 uiCamera 已注入；否则该层会回退到 Overlay。
+    /// </summary>
+    /// <param name="layerRenderModes">层级 → RenderMode 的覆盖；未列出的层级用默认配置</param>
+    public void Initialize(IDictionary<UILayer, RenderMode> layerRenderModes)
+    {
+        activeLayerRenderModes = new Dictionary<UILayer, RenderMode>(DefaultLayerRenderModes);
+        if (layerRenderModes != null)
+        {
+            foreach (var kvp in layerRenderModes)
+            {
+                activeLayerRenderModes[kvp.Key] = kvp.Value;
+            }
+        }
+
         foreach (UILayer layer in Enum.GetValues(typeof(UILayer)))
         {
             CreateLayerCanvas(layer);
@@ -71,18 +107,14 @@ public class UILayerManager
         // 添加 Canvas
         Canvas canvas = layerGo.AddComponent<Canvas>();
 
-        // Scene 层使用 World Space，其他层使用 Screen Space - Overlay
-        if (layer == UILayer.Scene)
+        var renderMode = ResolveRenderMode(layer);
+        canvas.renderMode = renderMode;
+        if (renderMode == RenderMode.ScreenSpaceCamera || renderMode == RenderMode.WorldSpace)
         {
-            canvas.renderMode = RenderMode.WorldSpace;
             if (uiCamera != null)
             {
                 canvas.worldCamera = uiCamera;
             }
-        }
-        else
-        {
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         }
 
         canvas.sortingOrder = LayerBaseOrders[layer];
@@ -99,6 +131,24 @@ public class UILayerManager
         // 缓存引用
         layerCanvases[layer] = canvas;
         layerRoots[layer] = layerGo.transform;
+    }
+
+    /// <summary>
+    /// 解析某层应该使用的 RenderMode：未配置 ScreenSpaceCamera 但又没有 uiCamera 时回退到 Overlay。
+    /// </summary>
+    private RenderMode ResolveRenderMode(UILayer layer)
+    {
+        var requested = activeLayerRenderModes != null && activeLayerRenderModes.TryGetValue(layer, out var rm)
+            ? rm
+            : DefaultLayerRenderModes[layer];
+
+        if (requested == RenderMode.ScreenSpaceCamera && uiCamera == null)
+        {
+            Debug.LogWarning($"[UILayerManager] 层级 {layer} 配置为 ScreenSpaceCamera 但未注入 uiCamera，自动回退为 ScreenSpaceOverlay");
+            return RenderMode.ScreenSpaceOverlay;
+        }
+
+        return requested;
     }
 
     /// <summary>

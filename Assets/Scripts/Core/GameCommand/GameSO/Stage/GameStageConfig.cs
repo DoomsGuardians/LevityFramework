@@ -98,6 +98,17 @@ public class StageConfigItem
 
 #if NANINOVEL
 /// <summary>
+/// Naninovel 剧情期间的相机模式
+/// </summary>
+public enum NaniCameraMode
+{
+    /// <summary>替换：关闭主相机，只渲染 Naninovel 相机（纯 AVG 模式）</summary>
+    Replace,
+    /// <summary>叠加：主相机保留，Naninovel 相机叠加渲染（剧情与游戏世界并存）</summary>
+    Overlay
+}
+
+/// <summary>
 /// Naninovel 剧情流程配置
 /// </summary>
 [System.Serializable]
@@ -106,6 +117,10 @@ public class NaninovelStageFlow
 {
     [LabelText("Auto Play On Enter"), LabelWidth(160)]
     public bool autoPlayOnEnter;
+
+    [LabelText("Camera Mode"), LabelWidth(160)]
+    [Tooltip("Replace: 关闭主相机，仅渲染 Naninovel 相机（纯 AVG）。Overlay: 主相机保留，Naninovel 相机叠加（剧情与游戏并存）。")]
+    public NaniCameraMode cameraMode = NaniCameraMode.Replace;
 
     [LabelText("Use AVG Camera"), LabelWidth(160)]
     [Tooltip("Use the Naninovel AVG camera instead of the one defined in the stage config.")]

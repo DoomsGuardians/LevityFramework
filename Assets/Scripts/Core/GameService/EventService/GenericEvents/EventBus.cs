@@ -43,7 +43,8 @@ public static class EventBus<T> where T : struct, IEvent
     private static readonly List<(EventBinding<T> binding, int priority)> bindingsToAdd = new List<(EventBinding<T>, int)>();
     private static readonly List<EventBinding<T>> bindingsToRemove = new List<EventBinding<T>>();
     private static readonly List<EventBinding<T>> onceBindings = new List<EventBinding<T>>();
-    private static bool isRaising;
+    // 嵌套触发计数：回调中再次 Raise 同类型事件时不会过早处理延迟队列
+    private static int raiseDepth;
 
     // 优先级降序比较器
     private class DescendingComparer : IComparer<int>
@@ -81,7 +82,7 @@ public static class EventBus<T> where T : struct, IEvent
     {
         if (binding == null || binding.IsDisposed) return binding;
 
-        if (isRaising)
+        if (raiseDepth > 0)
         {
             bindingsToAdd.Add((binding, priority));
         }
@@ -149,7 +150,7 @@ public static class EventBus<T> where T : struct, IEvent
     {
         if (binding == null) return;
 
-        if (isRaising)
+        if (raiseDepth > 0)
         {
             if (!bindingsToRemove.Contains(binding))
                 bindingsToRemove.Add(binding);
@@ -179,28 +180,36 @@ public static class EventBus<T> where T : struct, IEvent
     /// </summary>
     public static void Raise(T eventData)
     {
-        isRaising = true;
+        raiseDepth++;
 
-        // 按优先级顺序执行（高优先级先执行）
-        foreach (var kvp in priorityBindings)
+        try
         {
-            foreach (var binding in kvp.Value)
+            // 按优先级顺序执行（高优先级先执行）
+            foreach (var kvp in priorityBindings)
             {
-                if (binding != null && !binding.IsDisposed)
+                foreach (var binding in kvp.Value)
                 {
-                    try
+                    if (binding != null && !binding.IsDisposed)
                     {
-                        binding.Invoke(eventData);
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
+                        try
+                        {
+                            binding.Invoke(eventData);
+                        }
+                        catch (Exception e)
+                        {
+                            Debug.LogException(e);
+                        }
                     }
                 }
             }
         }
+        finally
+        {
+            raiseDepth--;
+        }
 
-        isRaising = false;
+        // 仅在最外层 Raise 完成后处理一次性绑定与延迟队列
+        if (raiseDepth > 0) return;
 
         // 处理一次性绑定
         foreach (var binding in onceBindings)
@@ -242,6 +251,7 @@ public static class EventBus<T> where T : struct, IEvent
         bindingsToAdd.Clear();
         bindingsToRemove.Clear();
         onceBindings.Clear();
+        raiseDepth = 0;
     }
 
     #endregion

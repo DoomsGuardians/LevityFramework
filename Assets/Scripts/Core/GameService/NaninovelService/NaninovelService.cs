@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Naninovel;
 using Naninovel.Async;
 using UnityEngine;
@@ -35,6 +36,8 @@ public class NaninovelService : ILogic
     private string currentScriptPath;
     private bool releaseInputOnStop;
     private bool allowNaninovelCamera;
+    private NaniCameraMode cameraMode = NaniCameraMode.Replace;
+    private readonly List<Camera> suspendedMainCameras = new List<Camera>();
 
     public bool IsInitialized => initializationSucceeded && scriptPlayer != null && Engine.Initialized;
     public bool IsPlaying => scriptPlayer != null && (scriptPlayer.Playing || scriptPlayer.Completing);
@@ -49,6 +52,32 @@ public class NaninovelService : ILogic
         lifetimeCts = new CancellationTokenSource();
         initializationTask = InitializeAsync(lifetimeCts.Token);
         initializationRequested = true;
+
+        // 注册存档钩子到 DataService
+        var dataService = gameRoot?.dataService;
+        if (dataService != null)
+        {
+            dataService.AddSaveProvider("naninovel", OnSaveGame);
+            dataService.AddLoadProvider("naninovel", OnLoadGame);
+        }
+    }
+
+    private void OnSaveGame(GameSaveData saveData)
+    {
+        if (!IsInitialized) return;
+        var stateManager = Engine.GetService<IStateManager>();
+        stateManager?.SaveGame(saveData.slotId.ToString()).Forget();
+    }
+
+    private async Task OnLoadGame(GameSaveData saveData)
+    {
+        if (!IsInitialized) return;
+        var stateManager = Engine.GetService<IStateManager>();
+        if (stateManager != null)
+        {
+            try { await stateManager.LoadGame(saveData.slotId.ToString()).AsTask(); }
+            catch (Exception ex) { Debug.LogWarning($"[NaninovelService] LoadGame slot {saveData.slotId} failed: {ex.Message}"); }
+        }
     }
 
     public void OnUpdate() { }
@@ -138,6 +167,9 @@ public class NaninovelService : ILogic
         {
             pendingStartLabel = startLabel;
 
+            // 剧情开始：确保 Naninovel 输入系统处于激活状态
+            SetNaninovelInputEnabled(true);
+
             if (pauseGameplayInput)
             {
                 AcquireGameplayInputLock();
@@ -198,6 +230,7 @@ public class NaninovelService : ILogic
 
         var flow = stageConfig.naninovelFlow;
         allowNaninovelCamera = flow?.useNaniCamera ?? false;
+        cameraMode = flow?.cameraMode ?? NaniCameraMode.Replace;
 
         if (!UpdateNaninovelCameraState() && allowNaninovelCamera && Engine.Behaviour != null)
         {
@@ -324,6 +357,18 @@ public class NaninovelService : ILogic
     private void RestoreGameplayInput()
     {
         InputRouter.SetEnabled(InputChannel.Gameplay, true, this);
+    }
+
+    /// <summary>
+    /// 显式控制 Naninovel 输入系统的激活状态。
+    /// 剧情开始时设为 true，结束时设为 false，确保两套输入系统时段明确不重叠。
+    /// </summary>
+    private void SetNaninovelInputEnabled(bool enabled)
+    {
+        if (Engine.Behaviour == null) return;
+        var inputManager = Engine.GetService<IInputManager>();
+        if (inputManager == null) return;
+        inputManager.ProcessInput = enabled;
     }
 
     private bool UpdateNaninovelCameraState(bool forceDisable = false)
