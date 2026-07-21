@@ -6,21 +6,29 @@ public class LevityRenderPipeline : RenderPipeline
 {
     CameraRenderer renderer = new CameraRenderer();
 
-    public LevityRenderPipeline()
+    bool useDynamicBatching, useGPUInstancing;
+
+    ShadowSettings shadowSettings;
+
+    public LevityRenderPipeline(bool useDynamicBatching, bool useGPUInstancing, bool useSRPBatcher, ShadowSettings shadowSettings)
     {
-        GraphicsSettings.useScriptableRenderPipelineBatching = true;
+        this.shadowSettings = shadowSettings;
+        this.useDynamicBatching = useDynamicBatching;
+        this.useGPUInstancing = useGPUInstancing;
+        GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+        GraphicsSettings.lightsUseLinearIntensity = true;
     }
 
     protected override void Render(ScriptableRenderContext context, Camera[] cameras)
     {
-        throw new System.NotImplementedException();
     }
 
     protected override void Render(ScriptableRenderContext context, List<Camera> cameras)
     {
         for (int i = 0; i < cameras.Count; i++)
         {
-            renderer.Render(context, cameras[i]);
+            renderer.Render(context, cameras[i], useDynamicBatching, useGPUInstancing,
+                shadowSettings);
         }
     }
 }

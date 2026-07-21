@@ -12,3 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ece1645e4626f8e41a71a9c48fcec17a, type: 3}
   m_Name: LevityRenderPipelineAsset
   m_EditorClassIdentifier: 
+  useDynamicBatching: 1
+  useGPUInstancing: 1
+  useSRPBatcher: 1
+  shadows:
+    maxDistance: 100
+    distanceFade: 0.1
+    directional:
+      atlasSize: 2048
+      filter: 3
+      cascadeCount: 4
+      cascadeRatio1: 0.1
+      cascadeRatio2: 0.25
+      cascadeRatio3: 0.5
+      cascadeFade: 0.1
+      cascadeBlend: 2
