@@ -1,0 +1,14 @@
+{
+    "name": "Levity.Narrative.Naninovel",
+    "rootNamespace": "Levity.Narrative.Naninovel",
+    "references": ["Levity.Narrative.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

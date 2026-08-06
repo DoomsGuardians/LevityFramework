@@ -84,6 +84,7 @@ namespace Levity.Narrative.Core
         ConcurrentSession,
         SequenceNotFound,
         InvalidOutcome,
+        BackendUnavailable,
         BackendFailure
     }
 

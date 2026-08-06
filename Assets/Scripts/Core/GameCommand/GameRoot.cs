@@ -6,6 +6,10 @@ using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using Levity.Composition;
+using Levity.Narrative.Core;
+#if NANINOVEL
+using Levity.Narrative.Naninovel;
+#endif
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -47,6 +51,8 @@ public class GameRoot : MonoSingleton<GameRoot>
 
 #if NANINOVEL
     public NaninovelService naninovelService;
+    public NarrativeSequenceRegistry narrativeSequenceRegistry;
+    public INarrativeModule narrativeModule;
 #endif
 
     /// <summary>
@@ -154,8 +160,10 @@ public class GameRoot : MonoSingleton<GameRoot>
         serviceList.Add(timerService);
 
 #if NANINOVEL
+        narrativeSequenceRegistry = new NarrativeSequenceRegistry();
         naninovelService = new NaninovelService();
         serviceList.Add(naninovelService);
+        narrativeModule = new NaninovelNarrativeBackend(narrativeSequenceRegistry, naninovelService);
 #endif
 
         RegisterCustomServices(serviceList);

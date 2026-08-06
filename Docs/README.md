@@ -9,7 +9,7 @@
 - [`../README.md`](../README.md)：面向使用者的当前代码概览、核心 API 与扩展方式。
 - [`../CONTEXT.md`](../CONTEXT.md)：领域术语及统一用语。
 
-当前实现仍保留 `GameRoot`、`Services` 服务定位器、枚举标识、`Resources` 和直接的 `NaninovelService` 集成作为兼容入口。`Levity.Narrative.Core` 已作为无引擎引用的独立程序集落地；`Levity.Composition` 也已提供确定性的 Initialize、Start 与逆序 Shutdown 协议，现有 `GameRoot` 的 `ILogic` 模块通过兼容适配器进入该协议。若文档与源码冲突，当前源码和测试是实现事实；其余架构文档仍是迁移目标。
+当前实现仍保留 `GameRoot`、`Services` 服务定位器、枚举标识、`Resources` 和直接的 `NaninovelService` 集成作为兼容入口。`Levity.Narrative.Core` 已作为无引擎引用的独立程序集落地；`Levity.Narrative.Naninovel` 通过稳定 Sequence ID registry 和显式播放端口隔离后端映射，旧 script/label 字段可增量映射；`Levity.Composition` 提供确定性的 Initialize、Start 与逆序 Shutdown 协议。若文档与源码冲突，当前源码和测试是实现事实；其余架构文档仍是迁移目标。
 
 ## 已接受的目标架构
 
@@ -17,7 +17,7 @@
 - [`architecture/narrative-module.md`](architecture/narrative-module.md)：叙事模块及 Naninovel 适配边界的目标架构。
 - [`adr/0001-own-narrative-contracts-and-adapt-naninovel.md`](adr/0001-own-narrative-contracts-and-adapt-naninovel.md)：叙事契约归 Levity、Naninovel 作为默认后端的已接受决策。
 
-这些设计中的 Narrative Core、Narrative Sequence 强类型 ID 和基础 Composition 生命周期已经落地；Unified Save、Narrative Flow/Adapter/Editor 及其他强类型 ID 尚未在当前代码中完整落地。
+这些设计中的 Narrative Core、Narrative Sequence 强类型 ID、Naninovel registry/兼容 adapter 和基础 Composition 生命周期已经落地；Unified Save、Narrative Flow/Editor 及其他强类型 ID 尚未在当前代码中完整落地。
 
 ## 规格与任务
 

@@ -6,9 +6,11 @@
   <Project Path="Levity.Composition.csproj" />
   <Project Path="Elringus.Naninovel.E2E.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
+  <Project Path="Levity.Narrative.Naninovel.Tests.csproj" />
   <Project Path="Levity.Narrative.Core.Tests.csproj" />
   <Project Path="Levity.Narrative.Core.csproj" />
   <Project Path="Levity.Composition.Tests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="Levity.Narrative.Naninovel.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
 </Solution>

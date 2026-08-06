@@ -12,12 +12,14 @@ using Naninovel;
 using Naninovel.Async;
 using UnityEngine;
 using LevityEvents;
+using Levity.Narrative.Core;
+using Levity.Narrative.Naninovel;
 
 /// <summary>
 /// Naninovel 视觉小说框架的集成服务
 /// 提供脚本播放、对话队列、输入管理等功能
 /// </summary>
-public class NaninovelService : ILogic
+public class NaninovelService : ILogic, INaninovelPlayer
 {
     private UniTask initializationTask = UniTask.CompletedTask;
     private bool initializationRequested;
@@ -43,6 +45,33 @@ public class NaninovelService : ILogic
     public bool IsPlaying => scriptPlayer != null && (scriptPlayer.Playing || scriptPlayer.Completing);
 
     public Camera NaniCamera => TryGetNaninovelCamera(out var camera) ? camera : null;
+
+    SaveAvailability INaninovelPlayer.SaveAvailability => SaveAvailability.Allowed;
+
+    async Task<object> INaninovelPlayer.PlayAsync(
+        NaninovelPlaybackRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await EnsureInitializedAsync(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            throw new NaninovelUnavailableException(
+                "Naninovel failed to initialize for narrative playback.",
+                exception);
+        }
+
+        await PlayScriptAsync(
+            request.ScriptPath,
+            request.EntryPoint,
+            waitForCompletion: true,
+            pauseGameplayInput: true,
+            stopCurrent: true,
+            cancellationToken: cancellationToken);
+        return null;
+    }
 
     public void OnInit()
     {
