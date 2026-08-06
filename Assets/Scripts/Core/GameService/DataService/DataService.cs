@@ -5,11 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Levity.UnifiedSave;
 using UnityEngine;
 
 /// <summary>
 /// 数据服务：管理游戏存档、加载、保存。
-/// 采用 Provider 钩子机制，允许子系统（如 NaninovelService）注册自己的存档/加载逻辑。
+/// 采用 Unified Save 事务，收集 versioned contributors 后原子替换单一槽位。
 /// 对外暴露多槽位接口 SaveToSlot / LoadFromSlot / DeleteSlot。
 /// </summary>
 public class DataService : ILogic
@@ -18,14 +19,12 @@ public class DataService : ILogic
     private string savePath;
 
     // ── Provider 钩子 ─────────────────────────────────────────────────────────
-    private readonly Dictionary<string, Action<GameSaveData>> saveProviders
-        = new Dictionary<string, Action<GameSaveData>>();
-
-    private readonly Dictionary<string, Func<GameSaveData, Task>> loadProviders
-        = new Dictionary<string, Func<GameSaveData, Task>>();
-
     private readonly Dictionary<string, Action<int>> deleteProviders
         = new Dictionary<string, Action<int>>();
+
+    private readonly List<IUnifiedSaveContributor> unifiedContributors =
+        new List<IUnifiedSaveContributor>();
+    private UnifiedSave unifiedSave;
 
     // ── 当前内存数据 ──────────────────────────────────────────────────────────
     public GameData gameData { get; private set; }
@@ -38,6 +37,10 @@ public class DataService : ILogic
             Directory.CreateDirectory(savePath);
 
         gameData = new GameData();
+        unifiedContributors.Add(new GameDataUnifiedSaveContributor(
+            () => gameData,
+            restored => gameData = restored));
+        RebuildUnifiedSave();
     }
 
     public void OnEnterState() { }
@@ -51,9 +54,11 @@ public class DataService : ILogic
     /// 在 DataService.SaveToSlot 时，<paramref name="onSave"/> 会被调用，
     /// 可将自定义数据写入 <see cref="GameSaveData"/>，也可以触发外部存档（如 Naninovel SaveGame）。
     /// </summary>
+    [Obsolete("Use AddUnifiedSaveContributor(IUnifiedSaveContributor). String-key providers cannot participate in atomic saves.")]
     public void AddSaveProvider(string key, Action<GameSaveData> onSave)
     {
-        saveProviders[key] = onSave;
+        throw new NotSupportedException(
+            "String-key save providers are not atomic. Implement IUnifiedSaveContributor and call AddUnifiedSaveContributor instead.");
     }
 
     /// <summary>
@@ -61,9 +66,11 @@ public class DataService : ILogic
     /// 在 DataService.LoadFromSlot 时，<paramref name="onLoad"/> 会被 await，
     /// 可从 <see cref="GameSaveData"/> 恢复数据，也可触发外部加载（如 Naninovel LoadGame）。
     /// </summary>
+    [Obsolete("Use AddUnifiedSaveContributor(IUnifiedSaveContributor). String-key providers cannot participate in atomic loads.")]
     public void AddLoadProvider(string key, Func<GameSaveData, Task> onLoad)
     {
-        loadProviders[key] = onLoad;
+        throw new NotSupportedException(
+            "String-key load providers are not atomic. Implement IUnifiedSaveContributor and call AddUnifiedSaveContributor instead.");
     }
 
     /// <summary>
@@ -79,36 +86,28 @@ public class DataService : ILogic
     /// </summary>
     public void RemoveProvider(string key)
     {
-        saveProviders.Remove(key);
-        loadProviders.Remove(key);
         deleteProviders.Remove(key);
+    }
+
+    /// <summary>Registers a versioned contributor in the single atomic save transaction.</summary>
+    public void AddUnifiedSaveContributor(IUnifiedSaveContributor contributor)
+    {
+        if (contributor == null) throw new ArgumentNullException(nameof(contributor));
+        unifiedContributors.Add(contributor);
+        RebuildUnifiedSave();
     }
 
     // ── 多槽位存档接口 ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// 保存到指定槽位。
-    /// 1. 调用所有注册的 save providers（可附加外部存档逻辑）。
-    /// 2. 将 gameData（JSON）写入 slot_{slot}.json。
+    /// 将全部 Unified Save contributors 原子保存到指定槽位。
     /// </summary>
     public async Task SaveToSlot(int slot)
     {
-        var saveData = new GameSaveData { slotId = slot, gameData = gameData };
-
-        // 通知各子系统写入自己的数据
-        foreach (var kv in saveProviders)
-        {
-            try { kv.Value.Invoke(saveData); }
-            catch (Exception ex) { Debug.LogError($"[DataService] SaveProvider '{kv.Key}' threw: {ex}"); }
-        }
-
-        // 持久化主存档 JSON
         try
         {
-            string filePath = GetSlotPath(slot);
-            string json = JsonUtility.ToJson(saveData, true);
-            await File.WriteAllTextAsync(filePath, json);
-            Debug.Log($"[DataService] Saved slot {slot} → {filePath}");
+            await unifiedSave.SaveAsync(GetUnifiedSlotId(slot));
+            Debug.Log($"[DataService] Atomically saved Unified Save slot {slot}.");
         }
         catch (Exception ex)
         {
@@ -117,37 +116,24 @@ public class DataService : ILogic
     }
 
     /// <summary>
-    /// 从指定槽位加载。
-    /// 1. 读取 slot_{slot}.json 并反序列化。
-    /// 2. 依次 await 所有注册的 load providers。
+    /// 从一个 Unified Save 槽位恢复全部 contributors。
     /// </summary>
     public async Task<bool> LoadFromSlot(int slot)
     {
-        string filePath = GetSlotPath(slot);
-        if (!File.Exists(filePath))
+        if (!SlotExists(slot))
         {
-            Debug.LogWarning($"[DataService] Slot {slot} not found: {filePath}");
+            Debug.LogWarning($"[DataService] Unified Save slot {slot} not found.");
             return false;
         }
 
-        GameSaveData saveData;
         try
         {
-            string json = await File.ReadAllTextAsync(filePath);
-            saveData = JsonUtility.FromJson<GameSaveData>(json);
-            gameData = saveData.gameData ?? new GameData();
+            await unifiedSave.LoadAsync(GetUnifiedSlotId(slot));
         }
         catch (Exception ex)
         {
             Debug.LogError($"[DataService] Failed to read slot {slot}: {ex}");
             return false;
-        }
-
-        // 通知各子系统恢复状态
-        foreach (var kv in loadProviders)
-        {
-            try { await kv.Value.Invoke(saveData); }
-            catch (Exception ex) { Debug.LogError($"[DataService] LoadProvider '{kv.Key}' threw: {ex}"); }
         }
 
         Debug.Log($"[DataService] Loaded slot {slot}");
@@ -169,7 +155,7 @@ public class DataService : ILogic
         // 删除主存档文件
         try
         {
-            string filePath = GetSlotPath(slot);
+            string filePath = GetUnifiedSlotPath(slot);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -185,7 +171,7 @@ public class DataService : ILogic
     /// <summary>
     /// 检查指定槽位是否存在主存档文件。
     /// </summary>
-    public bool SlotExists(int slot) => File.Exists(GetSlotPath(slot));
+    public bool SlotExists(int slot) => File.Exists(GetUnifiedSlotPath(slot));
 
     /// <summary>
     /// 获取所有已存在的槽位编号。
@@ -193,10 +179,10 @@ public class DataService : ILogic
     public List<int> GetExistingSlots()
     {
         var result = new List<int>();
-        var files = Directory.GetFiles(savePath, "slot_*.json");
+        var files = Directory.GetFiles(savePath, "slot_*.levity-save");
         foreach (var f in files)
         {
-            var name = Path.GetFileNameWithoutExtension(f); // e.g. "slot_1"
+            var name = Path.GetFileNameWithoutExtension(f);
             if (name.Length > 5 && int.TryParse(name.Substring(5), out int slot))
                 result.Add(slot);
         }
@@ -286,7 +272,38 @@ public class DataService : ILogic
     public void ResetData() => gameData = new GameData();
 
     // ── 私有工具 ──────────────────────────────────────────────────────────────
-    private string GetSlotPath(int slot) => Path.Combine(savePath, $"slot_{slot}.json");
+    private string GetUnifiedSlotId(int slot) => $"slot_{slot}";
+    private string GetUnifiedSlotPath(int slot) =>
+        Path.Combine(savePath, $"{GetUnifiedSlotId(slot)}.levity-save");
+
+    private void RebuildUnifiedSave() =>
+        unifiedSave = new UnifiedSave(new FileUnifiedSaveStore(savePath), unifiedContributors.ToArray());
+
+    private sealed class GameDataUnifiedSaveContributor : IUnifiedSaveContributor
+    {
+        private readonly Func<GameData> capture;
+        private readonly Action<GameData> restore;
+
+        public GameDataUnifiedSaveContributor(Func<GameData> capture, Action<GameData> restore)
+        {
+            this.capture = capture;
+            this.restore = restore;
+        }
+
+        public string Id => "gameplay";
+        public int Version => 1;
+        public Task<string> CaptureAsync(System.Threading.CancellationToken cancellationToken = default) =>
+            Task.FromResult(JsonUtility.ToJson(capture()));
+        public Task RestoreAsync(
+            int version,
+            string state,
+            System.Threading.CancellationToken cancellationToken = default)
+        {
+            if (version != Version) throw new InvalidOperationException($"Unsupported gameplay save version {version}.");
+            restore(JsonUtility.FromJson<GameData>(state) ?? new GameData());
+            return Task.CompletedTask;
+        }
+    }
 }
 
 // ── 数据模型 ───────────────────────────────────────────────────────────────────
