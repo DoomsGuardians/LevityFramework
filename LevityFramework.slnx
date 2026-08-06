@@ -3,6 +3,7 @@
   <Project Path="Elringus.Naninovel.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
+  <Project Path="Levity.Narrative.Flow.csproj" />
   <Project Path="Levity.Composition.csproj" />
   <Project Path="Elringus.Naninovel.E2E.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
@@ -10,6 +11,7 @@
   <Project Path="Levity.Narrative.Core.Tests.csproj" />
   <Project Path="Levity.Narrative.Core.csproj" />
   <Project Path="Levity.Composition.Tests.csproj" />
+  <Project Path="Levity.Narrative.Flow.Tests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Levity.Narrative.Naninovel.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />

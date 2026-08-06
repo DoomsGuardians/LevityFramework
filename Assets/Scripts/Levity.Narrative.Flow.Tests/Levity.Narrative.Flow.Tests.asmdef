@@ -1,0 +1,15 @@
+{
+    "name": "Levity.Narrative.Flow.Tests",
+    "rootNamespace": "Levity.Narrative.Flow.Tests",
+    "references": ["Levity.Narrative.Core", "Levity.Narrative.Flow"],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "versionDefines": [],
+    "noEngineReferences": true,
+    "optionalUnityReferences": ["TestAssemblies"]
+}

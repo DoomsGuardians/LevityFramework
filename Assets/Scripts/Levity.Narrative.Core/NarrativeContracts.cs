@@ -14,6 +14,16 @@ namespace Levity.Narrative.Core
             CancellationToken cancellationToken = default);
     }
 
+    /// <summary>Captures and restores an opaque backend-owned narrative position or choice state.</summary>
+    public interface INarrativeCheckpointStore
+    {
+        Task<string> CaptureCheckpointAsync(CancellationToken cancellationToken = default);
+
+        Task RestoreCheckpointAsync(
+            string checkpoint,
+            CancellationToken cancellationToken = default);
+    }
+
     public readonly struct NarrativeSequenceId : IEquatable<NarrativeSequenceId>
     {
         public NarrativeSequenceId(string value)

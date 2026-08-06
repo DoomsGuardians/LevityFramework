@@ -27,6 +27,7 @@
 |------|--------|--------------|
 | `Levity.Narrative.Core` 契约与 Fake Backend | **Core** | 后端中立的 Narrative Session 公共边界；可直接依赖。 |
 | `Levity.Narrative.Naninovel` registry 与 adapter | **Core** | 用稳定 Sequence ID 映射 `.nani` script/label；Naninovel 包通过显式播放端口保持隔离。 |
+| `Levity.Narrative.Flow` tracer bullet | **Core** | 等待 typed outcome、执行 game-owned branch，并保存已提交 Gameplay Command execution ID，避免恢复后重复副作用。 |
 | `Levity.Composition` | **Core** | 显式注册模块并执行确定性的 Initialize、Start 与逆序 Shutdown；新模块优先使用。 |
 | `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
 | `RoleSystem` | **Experimental** | 仍依赖 `GameRoot` 与枚举角色类型；仅供现有项目迁移验证。 |
