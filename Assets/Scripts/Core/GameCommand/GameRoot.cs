@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
+using Levity.Composition;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -73,6 +74,7 @@ public class GameRoot : MonoSingleton<GameRoot>
 
     // Update 事件
     private Action updateAction;
+    private Composition composition;
 
     // 游戏模式
     public GameModeBase currentGameMode;
@@ -158,10 +160,6 @@ public class GameRoot : MonoSingleton<GameRoot>
 
         RegisterCustomServices(serviceList);
 
-        foreach (var service in serviceList)
-        {
-            service.OnInit();
-        }
         #endregion
 
         #region 初始化系统模块
@@ -174,10 +172,16 @@ public class GameRoot : MonoSingleton<GameRoot>
 
         RegisterCustomSystems(systemList);
 
+        composition = new Composition();
+        foreach (var service in serviceList)
+        {
+            composition.Register(new LogicCompositionModule(service));
+        }
         foreach (var system in systemList)
         {
-            system.OnInit();
+            composition.Register(new LogicCompositionModule(system));
         }
+        composition.Start();
         #endregion
 
         InitGameModes();
@@ -216,14 +220,7 @@ public class GameRoot : MonoSingleton<GameRoot>
 
     private void OnApplicationQuit()
     {
-        for (int i = systemList.Count - 1; i >= 0; i--)
-        {
-            systemList[i].UnInit();
-        }
-        for (int i = serviceList.Count - 1; i >= 0; i--)
-        {
-            serviceList[i].UnInit();
-        }
+        composition?.Shutdown();
     }
     #endregion
 

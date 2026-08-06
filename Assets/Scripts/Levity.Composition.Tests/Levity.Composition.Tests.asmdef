@@ -1,0 +1,23 @@
+{
+    "name": "Levity.Composition.Tests",
+    "rootNamespace": "Levity.Composition.Tests",
+    "references": [
+        "Levity.Composition"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": true,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

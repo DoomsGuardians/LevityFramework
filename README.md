@@ -26,6 +26,7 @@
 | 能力 | 成熟度 | 当前使用建议 |
 |------|--------|--------------|
 | `Levity.Narrative.Core` 契约与 Fake Backend | **Core** | 后端中立的 Narrative Session 公共边界；可直接依赖。 |
+| `Levity.Composition` | **Core** | 显式注册模块并执行确定性的 Initialize、Start 与逆序 Shutdown；新模块优先使用。 |
 | `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
 | `RoleSystem` | **Experimental** | 仍依赖 `GameRoot` 与枚举角色类型；仅供现有项目迁移验证。 |
 | `MonoItemSystem` | **Experimental** | 场景扫描式生命周期尚缺少完整的所有权与回归测试。 |
