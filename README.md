@@ -19,6 +19,38 @@
 
 ---
 
+## 能力成熟度清单
+
+源码中存在某项能力，不代表它已经是稳定的公共架构。新增项目应优先采用 **Core**；**Toolkit** 需由项目主动选择；**Experimental** 尚未完成生产验证；**Deprecated** 仅用于兼容迁移，不应产生新的调用方。
+
+| 能力 | 成熟度 | 当前使用建议 |
+|------|--------|--------------|
+| `Levity.Narrative.Core` 契约与 Fake Backend | **Core** | 后端中立的 Narrative Session 公共边界；可直接依赖。 |
+| `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
+| `RoleSystem` | **Experimental** | 仍依赖 `GameRoot` 与枚举角色类型；仅供现有项目迁移验证。 |
+| `MonoItemSystem` | **Experimental** | 场景扫描式生命周期尚缺少完整的所有权与回归测试。 |
+| `FSM`（`IState` / `StateMachineBase`） | **Toolkit** | 可选的通用状态机工具，不是框架强制的 Game Flow 模型。 |
+| `BindableProperty` / `ObservableList` | **Toolkit** | 可按项目选用；不构成统一状态管理方案。 |
+| `GenericPool` / `IPoolable` | **Toolkit** | 可选对象池；与资源加载职责保持分离。 |
+| `LazySingleton<T>` | **Toolkit** | 仅用于确实需要进程级唯一实例的纯 C# 工具。 |
+| `SceneSingleton<T>` | **Experimental** | 自动查找/创建会隐藏场景所有权；新代码优先显式 Composition。 |
+| `MonoSingleton<T>` | **Deprecated** | 为 `GameRoot` 等旧入口保留；不要新增基于它的全局服务。 |
+| `PersistentSingleton<T>` | **Deprecated** | 自动创建和 `DontDestroyOnLoad` 会隐藏生命周期；仅兼容旧调用。 |
+| `UILayer` / `UILayerManager` | **Core** | 当前 UI 分层模型；新窗口使用 `UILayer`。 |
+| `WindowLayer` | **Deprecated** | 旧三层枚举，仅由兼容转换使用；新代码改用 `UILayer`。 |
+| Command ScriptableObjects | **Experimental** | 现有加载场景效果可用，但尚未形成稳定的公共命令契约。 |
+
+### 已知未消费的 Stage 配置
+
+以下字段当前会显示在 `GameStageConfig` Inspector 中，但 `StageSystem` 不读取它们。填写这些字段不会产生运行时行为；在消费路径实现或迁移完成前，不应把它们作为关卡能力使用。
+
+| 字段 | 当前状态 |
+|------|----------|
+| `StageConfigItem.RoleConfig` | **未消费**：`RoleSystem` 不会在 Stage 加载时应用该配置。 |
+| `StageConfigItem.preLoadItems` | **未消费**：Stage 加载流程不会预加载该资产。 |
+
+---
+
 ## 架构概览
 
 ```
@@ -195,6 +227,10 @@ binding.Unregister();
 支持多种时间类型的定时器系统。
 
 ```csharp
+// 下列回调由游戏项目提供。
+// doc-lint: ignore OnTimerTick
+// doc-lint: ignore OnCancel
+// doc-lint: ignore OnLoopEnd
 // 时间类型
 // - TimerType.RealTime: 真实时间，不受 TimeScale 影响
 // - TimerType.ScaledTime: 受 TimeScale 影响的游戏时间
@@ -229,6 +265,8 @@ int remaining = timerService.QueryRemaining(timerId);  // 查询剩余时间
 管理 UI 窗口的打开、关闭和层级。
 
 ```csharp
+// MyWindow 是游戏项目自己的窗口类型。
+// doc-lint: ignore MyWindow
 // 窗口需要先以名称注册，再显示
 uiService.RegisterWindow("settings", settingsWindow);
 var window = uiService.ShowWindow<MyWindow>("settings");
@@ -358,6 +396,9 @@ using LevityEvents;
 
 public class BattleManager : ManagerBase
 {
+    // ResetBattle / SaveProgress 是游戏项目自己的业务方法。
+    // doc-lint: ignore ResetBattle
+    // doc-lint: ignore SaveProgress
     private int score;
     private bool isPaused;
     private EventBinding<HitTargetEvent> hitBinding;
@@ -457,6 +498,8 @@ GameMode 控制游戏的整体状态流转。
 ### 创建自定义 GameMode
 
 ```csharp
+// BattleHUD 是游戏项目自己的窗口类型。
+// doc-lint: ignore BattleHUD
 public class BattleGameMode : GameModeBase
 {
     public BattleGameMode() : base(GameMode.GamePlay) { }
@@ -497,6 +540,9 @@ public class BattleGameMode : GameModeBase
 ### 注册和切换 GameMode
 
 ```csharp
+// MainMenuGameMode / PauseGameMode 是游戏项目自己的模式实现。
+// doc-lint: ignore MainMenuGameMode
+// doc-lint: ignore PauseGameMode
 // 1. 在 GameEnum.cs 中添加枚举值
 public enum GameMode
 {
@@ -585,6 +631,9 @@ public class SettingsWindow : WindowBase
 ```csharp
 public class ItemSlot : WindowBase
 {
+    // OnSlotEnter / OnSlotExit 是游戏项目自己的指针事件处理函数。
+    // doc-lint: ignore OnSlotEnter
+    // doc-lint: ignore OnSlotExit
     [SerializeField] private UIListener slotListener;
 
     public override void OnAwake()

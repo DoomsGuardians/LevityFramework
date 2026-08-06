@@ -73,10 +73,12 @@ public class StageConfigItem
     public GameObject UIWindowBase;
 
     [FoldoutGroup("Content")]
+    [InfoBox("已知未消费字段：当前 StageSystem 不读取或应用 RoleConfig。填写此项不会产生运行时行为。", InfoMessageType.Warning)]
     [LabelText("Role Config"), InlineEditor(ObjectFieldMode = InlineEditorObjectFieldModes.Foldout)]
     public ScriptableObject RoleConfig;
 
     [FoldoutGroup("Content")]
+    [InfoBox("已知未消费字段：当前 StageSystem 不读取 preLoadItems，也不会执行资产预加载。", InfoMessageType.Warning)]
     [LabelText("Preload Assets"), InlineEditor(ObjectFieldMode = InlineEditorObjectFieldModes.Foldout)]
     public ScriptableObject preLoadItems;
 

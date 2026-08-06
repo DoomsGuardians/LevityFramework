@@ -2,6 +2,8 @@
 
 本页是仓库文档入口。阅读文档前先确认其状态；“目标架构”描述已经接受但尚未全部实现的方向，不等同于当前代码能力。
 
+语言约定：`Docs/architecture/`、`Docs/adr/` 与 PRD 使用英文；面向框架使用者的根 `README.md` 使用中文；Agent 操作说明可中英双语。
+
 ## 当前实现
 
 - [`../README.md`](../README.md)：面向使用者的当前代码概览、核心 API 与扩展方式。
@@ -46,3 +48,4 @@
 - 需求、优先级和完成状态：只在 GitHub Issues 维护。
 - 被替代的方案和 roadmap：确认权威替代来源后删除，避免保留第二套架构或任务清单。
 - 文档中的示例必须调用仓库里真实存在的公开 API。
+- 修改 Markdown 或公开 C# API 后运行 `powershell -NoProfile -File Tools/doc-lint.ps1`；CI 会检查本地死链和 C# 示例符号。
