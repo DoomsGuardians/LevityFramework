@@ -4,7 +4,7 @@
 
 Accepted design, 2026-08-06.
 
-Implementation status: target architecture under migration. The current code still exposes a direct `NaninovelService`; the Core/Flow/Adapter/Editor split described below is not yet fully implemented.
+Implementation status: target architecture under migration. `Levity.Narrative.Core` now provides the backend-neutral runtime contract and a tested fake backend in a no-engine-reference assembly. The current application still exposes a direct `NaninovelService`; Flow/Adapter/Editor and application composition are not yet implemented.
 
 This document is the architectural authority for integrating narrative and presentation into Levity Framework. The superseded Naninovel integration roadmap has been removed; requirements and implementation status are tracked in GitHub Issues.
 

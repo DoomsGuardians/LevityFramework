@@ -7,7 +7,7 @@
 - [`../README.md`](../README.md)：面向使用者的当前代码概览、核心 API 与扩展方式。
 - [`../CONTEXT.md`](../CONTEXT.md)：领域术语及统一用语。
 
-当前实现仍以 `GameRoot`、`Services` 服务定位器、枚举标识、`Resources` 和直接的 `NaninovelService` 集成为主。若文档与源码冲突，当前源码和测试是实现事实；架构文档是迁移目标。
+当前实现仍以 `GameRoot`、`Services` 服务定位器、枚举标识、`Resources` 和直接的 `NaninovelService` 集成为主。`Levity.Narrative.Core` 已作为无引擎引用的独立程序集落地，包含后端中立的叙事会话契约、强类型 `NarrativeSequenceId`、并发策略、结构化终态、保存许可，以及由 EditMode 契约测试覆盖的 Fake Narrative Backend。若文档与源码冲突，当前源码和测试是实现事实；其余架构文档仍是迁移目标。
 
 ## 已接受的目标架构
 
@@ -15,7 +15,7 @@
 - [`architecture/narrative-module.md`](architecture/narrative-module.md)：叙事模块及 Naninovel 适配边界的目标架构。
 - [`adr/0001-own-narrative-contracts-and-adapt-naninovel.md`](adr/0001-own-narrative-contracts-and-adapt-naninovel.md)：叙事契约归 Levity、Naninovel 作为默认后端的已接受决策。
 
-这些设计中的 Composition、独立程序集、强类型 ID、Unified Save、Narrative Core/Flow/Adapter 等能力尚未在当前代码中完整落地。
+这些设计中的 Narrative Core 独立程序集和 Narrative Sequence 强类型 ID 已开始落地；Composition、Unified Save、Narrative Flow/Adapter/Editor 及其他强类型 ID 尚未在当前代码中完整落地。
 
 ## 规格与任务
 

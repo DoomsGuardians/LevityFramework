@@ -62,6 +62,10 @@ GameRoot (单例服务定位器)
 ## 目录结构
 
 ```
+Assets/Scripts/Levity.Narrative.Core/
+├── NarrativeContracts.cs    # 后端中立的叙事会话、结果、并发与保存许可契约
+└── FakeNarrativeBackend.cs  # EditMode 测试与 Placeholder Backend 共用实现
+
 Assets/Scripts/Core/
 ├── GameCommand/              # 核心指令模块
 │   ├── Interface/            # 接口定义
