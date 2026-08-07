@@ -160,10 +160,11 @@ public class GameRoot : MonoSingleton<GameRoot>
         serviceList.Add(timerService);
 
 #if NANINOVEL
-        narrativeSequenceRegistry = new NarrativeSequenceRegistry();
+        narrativeSequenceRegistry = NaninovelSequenceCatalog.CreateDefault();
         naninovelService = new NaninovelService();
         serviceList.Add(naninovelService);
         narrativeModule = new NaninovelNarrativeBackend(narrativeSequenceRegistry, naninovelService);
+        dataService.SetSaveAvailabilitySource(() => narrativeModule.SaveAvailability);
 #endif
 
         RegisterCustomServices(serviceList);

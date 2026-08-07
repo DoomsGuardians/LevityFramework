@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Levity.Narrative.Core;
 using Levity.UnifiedSave;
 using UnityEngine;
 
@@ -25,6 +26,7 @@ public class DataService : ILogic
     private readonly List<IUnifiedSaveContributor> unifiedContributors =
         new List<IUnifiedSaveContributor>();
     private UnifiedSave unifiedSave;
+    private Func<SaveAvailability> saveAvailability = () => SaveAvailability.Allowed;
 
     // ── 当前内存数据 ──────────────────────────────────────────────────────────
     public GameData gameData { get; private set; }
@@ -97,21 +99,33 @@ public class DataService : ILogic
         RebuildUnifiedSave();
     }
 
+    /// <summary>Uses a game-owned source to decide whether a save may begin.</summary>
+    public void SetSaveAvailabilitySource(Func<SaveAvailability> source)
+    {
+        saveAvailability = source ?? throw new ArgumentNullException(nameof(source));
+    }
+
     // ── 多槽位存档接口 ────────────────────────────────────────────────────────
 
     /// <summary>
     /// 将全部 Unified Save contributors 原子保存到指定槽位。
     /// </summary>
-    public async Task SaveToSlot(int slot)
+    public async Task<SaveSlotResult> SaveToSlot(int slot)
     {
+        var availability = saveAvailability();
+        if (!availability.CanSave)
+            return SaveSlotResult.Blocked(availability.BlockedReason);
+
         try
         {
             await unifiedSave.SaveAsync(GetUnifiedSlotId(slot));
             Debug.Log($"[DataService] Atomically saved Unified Save slot {slot}.");
+            return SaveSlotResult.Saved();
         }
         catch (Exception ex)
         {
             Debug.LogError($"[DataService] Failed to write slot {slot}: {ex}");
+            return SaveSlotResult.Failed(ex);
         }
     }
 
@@ -304,6 +318,33 @@ public class DataService : ILogic
             return Task.CompletedTask;
         }
     }
+}
+
+public enum SaveSlotStatus
+{
+    Saved,
+    Blocked,
+    Failed
+}
+
+public readonly struct SaveSlotResult
+{
+    private SaveSlotResult(SaveSlotStatus status, string blockedReason, Exception exception)
+    {
+        Status = status;
+        BlockedReason = blockedReason;
+        Exception = exception;
+    }
+
+    public SaveSlotStatus Status { get; }
+    public string BlockedReason { get; }
+    public Exception Exception { get; }
+
+    public static SaveSlotResult Saved() => new SaveSlotResult(SaveSlotStatus.Saved, null, null);
+    public static SaveSlotResult Blocked(string reason) =>
+        new SaveSlotResult(SaveSlotStatus.Blocked, reason, null);
+    public static SaveSlotResult Failed(Exception exception) =>
+        new SaveSlotResult(SaveSlotStatus.Failed, null, exception ?? throw new ArgumentNullException(nameof(exception)));
 }
 
 // ── 数据模型 ───────────────────────────────────────────────────────────────────

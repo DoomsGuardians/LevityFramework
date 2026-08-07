@@ -1,0 +1,6 @@
+@choice "Accept mission" goto:.Accept
+@stop
+
+# Accept
+@set missionAccepted=true
+@levityOutcome Accept
