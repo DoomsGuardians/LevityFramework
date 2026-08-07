@@ -69,10 +69,12 @@ namespace Levity.Stage.Unity
             public UnityStageHandle(StageDescriptor descriptor, IUnitySceneHandle scene)
             {
                 Descriptor = descriptor;
+                Scope = new StageScope(descriptor.Id);
                 this.scene = scene;
             }
 
             public StageDescriptor Descriptor { get; }
+            public StageScope Scope { get; }
 
             public Task ActivateAsync(CancellationToken cancellationToken) =>
                 scene.ActivateAsync(cancellationToken);

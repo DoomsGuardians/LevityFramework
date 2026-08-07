@@ -16,6 +16,7 @@ namespace Levity.Stage
     public interface IStageHandle
     {
         StageDescriptor Descriptor { get; }
+        StageScope Scope { get; }
 
         Task ActivateAsync(CancellationToken cancellationToken);
 
@@ -278,18 +279,15 @@ namespace Levity.Stage
             current = candidate;
             if (previous != null)
             {
-                try
-                {
-                    await previous.ReleaseAsync(CancellationToken.None);
-                }
-                catch (Exception exception)
+                var releaseException = await ReleaseOwnedHandleAsync(previous);
+                if (releaseException != null)
                 {
                     return StageChangeResult.Failed(new StageChangeFailure(
                         StageChangeFailureCode.ReleasePreviousFailed,
                         StageChangePhase.ReleasePrevious,
                         targetStageId,
                         $"Stage '{targetStageId}' committed, but releasing the previous Stage failed.",
-                        exception));
+                        releaseException));
                 }
             }
 
@@ -311,19 +309,38 @@ namespace Levity.Stage
                 }
             }
 
-            Exception releaseException = null;
-            try
-            {
-                await candidate.ReleaseAsync(CancellationToken.None);
-            }
-            catch (Exception exception)
-            {
-                releaseException = exception;
-            }
+            var releaseException = await ReleaseOwnedHandleAsync(candidate);
 
             if (restoreException != null && releaseException != null)
                 return new AggregateException(restoreException, releaseException);
             return restoreException ?? releaseException;
+        }
+
+        private static async Task<Exception> ReleaseOwnedHandleAsync(IStageHandle handle)
+        {
+            Exception scopeException = null;
+            try
+            {
+                await handle.Scope.ReleaseAsync();
+            }
+            catch (Exception exception)
+            {
+                scopeException = exception;
+            }
+
+            Exception handleException = null;
+            try
+            {
+                await handle.ReleaseAsync(CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                handleException = exception;
+            }
+
+            if (scopeException != null && handleException != null)
+                return new AggregateException(scopeException, handleException);
+            return scopeException ?? handleException;
         }
     }
 }

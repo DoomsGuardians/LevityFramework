@@ -122,6 +122,74 @@ namespace Levity.Stage.Tests
         }
 
         [Test]
+        public void RollbackReleasesCandidateManagersAndLeavesPreviousManagersUsable()
+        {
+            var target = new StageDescriptor(new StageId("mission"), "Scenes/Mission");
+            var registry = new StageRegistry();
+            registry.Register(target);
+            var previous = new RecordingStageHandle(
+                new StageDescriptor(new StageId("menu"), "Scenes/Menu"));
+            var previousManager = new ManagerProbe();
+            var previousLease = previous.Scope.Register(
+                previousManager,
+                _ => Task.CompletedTask);
+            var candidate = new RecordingStageHandle(target)
+            {
+                ActivateException = new System.InvalidOperationException("activate failed")
+            };
+            var candidateManager = new ManagerProbe();
+            var candidateLease = candidate.Scope.Register(candidateManager, manager =>
+            {
+                manager.ReleaseCount++;
+                return Task.CompletedTask;
+            });
+            var conductor = new StageConductor(
+                registry,
+                new RecordingStageLoader { PreparedHandle = candidate },
+                previous);
+
+            conductor.ChangeAsync(target.Id).GetAwaiter().GetResult();
+
+            Assert.That(candidateManager.ReleaseCount, Is.EqualTo(1));
+            Assert.Throws<ReleasedStageManagerAccessException>(() => _ = candidateLease.Value);
+            Assert.That(previousLease.Value, Is.SameAs(previousManager));
+        }
+
+        [Test]
+        public void ManagerReleaseFailureDoesNotPreventCandidateHandleRelease()
+        {
+            var target = new StageDescriptor(new StageId("mission"), "Scenes/Mission");
+            var registry = new StageRegistry();
+            registry.Register(target);
+            var candidate = new RecordingStageHandle(target)
+            {
+                ActivateException = new System.InvalidOperationException("activate failed")
+            };
+            var first = new FirstManagerProbe();
+            var second = new SecondManagerProbe();
+            candidate.Scope.Register(first, manager =>
+            {
+                manager.ReleaseCount++;
+                return Task.FromException(new System.InvalidOperationException("manager release failed"));
+            });
+            candidate.Scope.Register(second, manager =>
+            {
+                manager.ReleaseCount++;
+                return Task.CompletedTask;
+            });
+            var conductor = new StageConductor(
+                registry,
+                new RecordingStageLoader { PreparedHandle = candidate });
+
+            var result = conductor.ChangeAsync(target.Id).GetAwaiter().GetResult();
+
+            Assert.That(first.ReleaseCount, Is.EqualTo(1));
+            Assert.That(second.ReleaseCount, Is.EqualTo(1));
+            Assert.That(candidate.ReleaseCount, Is.EqualTo(1));
+            Assert.That(result.Failure.CleanupException, Is.Not.Null);
+        }
+
+        [Test]
         public void SuccessfulChangeCommitsTheCandidateThenReleasesThePreviousStage()
         {
             var target = new StageDescriptor(new StageId("mission"), "Scenes/Mission");
@@ -141,6 +209,41 @@ namespace Levity.Stage.Tests
             Assert.That(candidate.ActivateCount, Is.EqualTo(1));
             Assert.That(candidate.ReleaseCount, Is.Zero);
             Assert.That(previous.ReleaseCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SuccessfulChangeReleasesThePreviousManagerScopeAndKeepsTheCandidateScopeActive()
+        {
+            var target = new StageDescriptor(new StageId("mission"), "Scenes/Mission");
+            var registry = new StageRegistry();
+            registry.Register(target);
+            var previous = new RecordingStageHandle(
+                new StageDescriptor(new StageId("menu"), "Scenes/Menu"));
+            var previousManager = new ManagerProbe();
+            var previousLease = previous.Scope.Register(previousManager, manager =>
+            {
+                manager.ReleaseCount++;
+                return Task.CompletedTask;
+            });
+            var candidate = new RecordingStageHandle(target);
+            var candidateManager = new ManagerProbe();
+            var candidateLease = candidate.Scope.Register(candidateManager, manager =>
+            {
+                manager.ReleaseCount++;
+                return Task.CompletedTask;
+            });
+            var conductor = new StageConductor(
+                registry,
+                new RecordingStageLoader { PreparedHandle = candidate },
+                previous);
+
+            var result = conductor.ChangeAsync(target.Id).GetAwaiter().GetResult();
+
+            Assert.That(result.Status, Is.EqualTo(StageChangeStatus.Completed));
+            Assert.That(previousManager.ReleaseCount, Is.EqualTo(1));
+            Assert.Throws<ReleasedStageManagerAccessException>(() => _ = previousLease.Value);
+            Assert.That(candidateLease.Value, Is.SameAs(candidateManager));
+            Assert.That(candidateManager.ReleaseCount, Is.Zero);
         }
 
         [Test]
@@ -279,9 +382,14 @@ namespace Levity.Stage.Tests
 
         private sealed class RecordingStageHandle : IStageHandle
         {
-            public RecordingStageHandle(StageDescriptor descriptor) => Descriptor = descriptor;
+            public RecordingStageHandle(StageDescriptor descriptor)
+            {
+                Descriptor = descriptor;
+                Scope = new StageScope(descriptor.Id);
+            }
 
             public StageDescriptor Descriptor { get; }
+            public StageScope Scope { get; }
             public int ActivateCount { get; private set; }
             public int ReleaseCount { get; private set; }
             public System.Exception ActivateException { get; set; }
@@ -307,6 +415,21 @@ namespace Levity.Stage.Tests
                     ? Task.CompletedTask
                     : Task.FromException(ReleaseException);
             }
+        }
+
+        private sealed class ManagerProbe
+        {
+            public int ReleaseCount { get; set; }
+        }
+
+        private sealed class FirstManagerProbe
+        {
+            public int ReleaseCount { get; set; }
+        }
+
+        private sealed class SecondManagerProbe
+        {
+            public int ReleaseCount { get; set; }
         }
     }
 }
