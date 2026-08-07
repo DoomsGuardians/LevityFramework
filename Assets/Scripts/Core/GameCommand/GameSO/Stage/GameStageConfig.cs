@@ -3,6 +3,8 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using Levity.Stage;
+using Levity.Stage.Compatibility;
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -32,6 +34,38 @@ public class GameStageConfig : SerializedScriptableObject
     {
         return stageConfigList.Find(i => i.stageID == stageID);
     }
+
+    public StageConfigItem GetStageItem(StageId stageId) =>
+        stageConfigList.Find(item => item != null && item.StrongStageId == stageId);
+
+    public StageRegistry CreateStageRegistry()
+    {
+        var registry = new StageRegistry();
+        foreach (var item in stageConfigList.Where(item => item != null))
+            registry.Register(new StageDescriptor(item.StrongStageId, item.sceneName));
+        return registry;
+    }
+
+    public LegacyStageCompatibility CreateLegacyCompatibility(StageRegistry registry)
+    {
+        var compatibility = new LegacyStageCompatibility(registry);
+        foreach (var item in stageConfigList.Where(item => item != null))
+        {
+            compatibility.MapSlot(item.stageID, item.StrongStageId);
+            compatibility.MapMode(item.gameMode, item.StrongStageId);
+        }
+        return compatibility;
+    }
+
+    [System.Obsolete(
+        "Legacy integer Stage lookup is deprecated. Use CreateStageRegistry().Resolve(StageId) instead.")]
+    public LegacyStageResolutionResult ResolveLegacyStage(int legacyStageId)
+    {
+        var registry = CreateStageRegistry();
+#pragma warning disable CS0618
+        return CreateLegacyCompatibility(registry).ResolveSlot(legacyStageId);
+#pragma warning restore CS0618
+    }
 }
 
 /// <summary>
@@ -50,6 +84,11 @@ public class StageConfigItem
     [FoldoutGroup("Basic Info")]
     [LabelText("Stage ID"), LabelWidth(110)]
     public int stageID;
+
+    [FoldoutGroup("Basic Info")]
+    [LabelText("Strong Stage ID"), LabelWidth(110)]
+    [InfoBox("Use this stable StageId for new code. Empty values temporarily map to legacy-<integer ID>.", InfoMessageType.Info)]
+    public string stageId;
 
     [FoldoutGroup("Basic Info")]
     [LabelText("Scene Name"), LabelWidth(110)]
@@ -96,6 +135,9 @@ public class StageConfigItem
     public string StageLabel => string.IsNullOrWhiteSpace(sceneName)
         ? $"Stage {stageID}"
         : $"{stageID:000} - {sceneName}";
+
+    public Levity.Stage.StageId StrongStageId => new Levity.Stage.StageId(
+        string.IsNullOrWhiteSpace(stageId) ? $"legacy-{stageID}" : stageId);
 }
 
 #if NANINOVEL

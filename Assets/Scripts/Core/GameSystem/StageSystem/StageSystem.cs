@@ -4,6 +4,7 @@
 using System;
 using UnityEngine;
 using LevityEvents;
+using Levity.Stage;
 
 /// <summary>
 /// 关卡系统：加载关卡、初始化 Manager、处理场景转换
@@ -52,7 +53,32 @@ public class StageSystem : ILogic
     /// <param name="stageID">关卡 ID</param>
     /// <param name="doneLoadTask">加载完成回调</param>
     /// <param name="gameDataID">游戏存档 ID（-1 表示不更新）</param>
+    [Obsolete("LoadStage(int) is deprecated. Use LoadStage(StageId) with a configured strong StageId.")]
     public void LoadStage(int stageID, Action doneLoadTask = null, int gameDataID = -1)
+    {
+        var config = LoadStageConfig();
+        if (config == null) return;
+        Debug.LogWarning(
+            $"[StageSystem] Legacy Stage slot {stageID} is deprecated. " +
+            "Configure a strong StageId and call LoadStage(StageId).");
+#pragma warning disable CS0618
+        var resolution = config.ResolveLegacyStage(stageID);
+#pragma warning restore CS0618
+        if (!resolution.IsSuccess)
+        {
+            Debug.LogError(
+                $"[StageSystem] Legacy Stage slot {stageID} could not resolve through StageId compatibility: " +
+                resolution.Failure.Code);
+            gameRoot.ResetInput();
+            return;
+        }
+        LoadStage(resolution.Descriptor.Id, doneLoadTask, gameDataID, config);
+    }
+
+    public void LoadStage(StageId stageId, Action doneLoadTask = null, int gameDataID = -1) =>
+        LoadStage(stageId, doneLoadTask, gameDataID, LoadStageConfig());
+
+    private GameStageConfig LoadStageConfig()
     {
         // 禁用输入
         gameRoot.CancelInput();
@@ -63,14 +89,22 @@ public class StageSystem : ILogic
         {
             Debug.LogError($"[StageSystem] Failed to load GameStageConfig from: {GameResPathConfig.StageConfig}");
             gameRoot.ResetInput();
-            return;
+            return null;
         }
+        return gameStageConfig;
+    }
 
-        // 获取具体关卡配置信息
-        currentStageConfig = gameStageConfig.GetStageItem(stageID);
+    private void LoadStage(
+        StageId stageId,
+        Action doneLoadTask,
+        int gameDataID,
+        GameStageConfig config)
+    {
+        if (config == null) return;
+        currentStageConfig = config.GetStageItem(stageId);
         if (currentStageConfig == null)
         {
-            Debug.LogError($"[StageSystem] Stage {stageID} not found in config!");
+            Debug.LogError($"[StageSystem] StageId '{stageId}' not found in config!");
             gameRoot.ResetInput();
             return;
         }
@@ -143,7 +177,7 @@ public class StageSystem : ILogic
     {
         if (currentStageConfig != null)
         {
-            LoadStage(currentStageConfig.stageID);
+            LoadStage(currentStageConfig.StrongStageId);
         }
     }
 }
