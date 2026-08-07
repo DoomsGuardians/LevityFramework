@@ -1,0 +1,19 @@
+{
+    "name": "Levity.Stage.Workspace",
+    "rootNamespace": "Levity.Stage.Workspace",
+    "references": [
+        "Levity.Narrative.Core",
+        "Levity.Narrative.Flow",
+        "Levity.Narrative.Placeholder",
+        "Levity.Stage"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

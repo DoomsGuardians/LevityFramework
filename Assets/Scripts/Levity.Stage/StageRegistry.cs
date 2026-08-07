@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Levity.Stage
 {
@@ -100,6 +101,10 @@ namespace Levity.Stage
     {
         private readonly Dictionary<StageId, StageDescriptor> descriptors =
             new Dictionary<StageId, StageDescriptor>();
+        private readonly List<StageId> registrationOrder = new List<StageId>();
+
+        public IReadOnlyList<StageDescriptor> Descriptors =>
+            registrationOrder.Select(id => descriptors[id]).ToArray();
 
         public void Register(StageDescriptor descriptor)
         {
@@ -108,6 +113,7 @@ namespace Levity.Stage
                 throw new DuplicateStageRegistrationException(descriptor.Id);
 
             descriptors.Add(descriptor.Id, descriptor);
+            registrationOrder.Add(descriptor.Id);
         }
 
         public void Replace(StageDescriptor descriptor)

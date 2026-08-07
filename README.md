@@ -29,6 +29,7 @@
 | `Levity.Narrative.Naninovel` registry 与 adapter | **Core** | 用稳定 Sequence ID 映射 `.nani` script/label；Naninovel 包通过显式播放端口保持隔离。 |
 | `Levity.Narrative.Flow` tracer bullet | **Core** | 等待 typed outcome、执行 game-owned branch，并保存已提交 Gameplay Command execution ID，避免恢复后重复副作用。 |
 | `Levity.Narrative.Workspace` | **Supported Module** | 在不加载正式 Stage、Flow 或 Naninovel 的情况下枚举并播放叙事分支；入口见 [`Docs/workspaces/narrative-workspace.md`](Docs/workspaces/narrative-workspace.md)。 |
+| `Levity.Narrative.Placeholder` / `Levity.Stage.Workspace` | **Supported Module** | 通过事务式 Stage 路径加载任意注册关卡，并用运行时可选的 typed outcome 驱动 Flow；入口见 [`Docs/workspaces/stage-workspace.md`](Docs/workspaces/stage-workspace.md)。 |
 | `Levity.UnifiedSave` | **Core** | versioned contributors 共同提交一个 slot；candidate 写入或 contributor 失败时保留上一个有效存档。 |
 | `Levity.Composition` | **Core** | 显式注册模块并执行确定性的 Initialize、Start 与逆序 Shutdown；新模块优先使用。 |
 | `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
@@ -105,6 +106,12 @@ Assets/Scripts/Levity.Narrative.Core/
 Assets/Scripts/Levity.Narrative.Workspace/
 ├── NarrativeWorkspace.cs    # 无 Stage/Flow 资产的序列目录、分支选择与运行入口
 └── FakeWorkspaceState.cs    # 可检查的假游戏状态、带类型命令及调用日志
+
+Assets/Scripts/Levity.Narrative.Placeholder/
+└── PlaceholderNarrativeBackend.cs # 列出 typed outcomes 并等待 operator 选择的生产后端
+
+Assets/Scripts/Levity.Stage.Workspace/
+└── StageWorkspace.cs        # 事务式 Stage commit 后运行 Placeholder-backed Flow
 
 Assets/Scripts/Core/
 ├── GameCommand/              # 核心指令模块
