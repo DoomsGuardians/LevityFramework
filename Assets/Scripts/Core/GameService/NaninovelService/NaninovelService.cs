@@ -11,11 +11,15 @@ using Naninovel;
 using Naninovel.Async;
 using UnityEngine;
 using LevityEvents;
+using Levity.Narrative.Naninovel;
 
 /// <summary>
 /// Naninovel 视觉小说框架的集成服务
 /// 提供脚本播放、对话队列、输入管理等功能
 /// </summary>
+[Obsolete(
+    "Migration-pending legacy utility for dialogue queue, input, and camera behavior. " +
+    "Use the Narrative Runtime for playback; NaninovelRuntimePlayer owns engine initialization.")]
 public class NaninovelService : ILogic
 {
     private UniTask initializationTask = UniTask.CompletedTask;
@@ -49,7 +53,7 @@ public class NaninovelService : ILogic
         inputService = gameRoot?.inputService;
 
         lifetimeCts = new CancellationTokenSource();
-        initializationTask = InitializeAsync(lifetimeCts.Token);
+        initializationTask = AttachToRuntimeAsync(lifetimeCts.Token);
         initializationRequested = true;
 
     }
@@ -235,11 +239,11 @@ public class NaninovelService : ILogic
             request.StopCurrentPlayback).Forget();
     }
 
-    private async UniTask InitializeAsync(CancellationToken token)
+    private async UniTask AttachToRuntimeAsync(CancellationToken token)
     {
         try
         {
-            await RuntimeInitializer.Initialize();
+            await NaninovelRuntimePlayer.EnsureInitializedAsync();
             if (token.IsCancellationRequested) return;
 
             scriptPlayer = Engine.GetService<IScriptPlayer>();
@@ -286,7 +290,7 @@ public class NaninovelService : ILogic
 
         if (!initializationRequested)
         {
-            initializationTask = InitializeAsync(token);
+            initializationTask = AttachToRuntimeAsync(token);
             initializationRequested = true;
         }
 

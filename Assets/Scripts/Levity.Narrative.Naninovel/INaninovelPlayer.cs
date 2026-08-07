@@ -13,6 +13,14 @@ namespace Levity.Narrative.Naninovel
             : base(message, innerException) { }
     }
 
+    internal sealed class NaninovelConcurrentSessionException : InvalidOperationException
+    {
+        public NaninovelConcurrentSessionException()
+            : base("A Naninovel narrative session is already active.") { }
+    }
+
+    internal sealed class NaninovelSessionCancelledException : OperationCanceledException { }
+
     /// <summary>Explicit extension surface implemented by the installed Naninovel integration.</summary>
     public interface INaninovelPlayer
     {
@@ -28,15 +36,18 @@ namespace Levity.Narrative.Naninovel
         public NaninovelPlaybackRequest(
             string scriptPath,
             string entryPoint,
-            IReadOnlyDictionary<string, object> parameters)
+            IReadOnlyDictionary<string, object> parameters,
+            ConcurrentRequestPolicy concurrentPolicy)
         {
             ScriptPath = scriptPath ?? throw new ArgumentNullException(nameof(scriptPath));
             EntryPoint = entryPoint;
             Parameters = parameters ?? throw new ArgumentNullException(nameof(parameters));
+            ConcurrentPolicy = concurrentPolicy;
         }
 
         public string ScriptPath { get; }
         public string EntryPoint { get; }
         public IReadOnlyDictionary<string, object> Parameters { get; }
+        public ConcurrentRequestPolicy ConcurrentPolicy { get; }
     }
 }

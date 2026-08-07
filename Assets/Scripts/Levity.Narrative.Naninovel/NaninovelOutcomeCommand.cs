@@ -1,5 +1,5 @@
+using System;
 using Naninovel;
-using System.Threading.Tasks;
 
 namespace Levity.Narrative.Naninovel
 {
@@ -12,22 +12,50 @@ namespace Levity.Narrative.Naninovel
 
         public override UniTask Execute(AsyncToken token = default)
         {
-            NaninovelOutcomeBridge.Publish(Value);
+            NaninovelOutcomeRouter.Publish(Value);
             return UniTask.CompletedTask;
         }
     }
 
-    internal static class NaninovelOutcomeBridge
+    internal interface INaninovelOutcomeSink
     {
-        private static TaskCompletionSource<string> pending;
+        void Publish(string value);
+    }
 
-        public static Task<string> Begin()
+    internal static class NaninovelOutcomeRouter
+    {
+        private static readonly object Sync = new object();
+        private static INaninovelOutcomeSink active;
+
+        public static IDisposable Attach(INaninovelOutcomeSink sink)
         {
-            pending = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-            return pending.Task;
+            lock (Sync)
+            {
+                if (active != null)
+                    throw new InvalidOperationException("A Naninovel outcome sink is already attached.");
+                active = sink ?? throw new ArgumentNullException(nameof(sink));
+                return new Attachment(sink);
+            }
         }
 
-        public static void Publish(string value) => pending?.TrySetResult(value);
-        public static void Cancel() => pending?.TrySetCanceled();
+        public static void Publish(string value)
+        {
+            INaninovelOutcomeSink sink;
+            lock (Sync) sink = active;
+            sink?.Publish(value);
+        }
+
+        private sealed class Attachment : IDisposable
+        {
+            private readonly INaninovelOutcomeSink sink;
+            public Attachment(INaninovelOutcomeSink sink) => this.sink = sink;
+            public void Dispose()
+            {
+                lock (Sync)
+                {
+                    if (ReferenceEquals(active, sink)) active = null;
+                }
+            }
+        }
     }
 }

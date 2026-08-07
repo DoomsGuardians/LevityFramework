@@ -39,7 +39,11 @@ namespace Levity.Narrative.Naninovel
             try
             {
                 var outcome = await player.PlayAsync(
-                    new NaninovelPlaybackRequest(sequence.ScriptPath, entryPoint, request.Parameters),
+                    new NaninovelPlaybackRequest(
+                        sequence.ScriptPath,
+                        entryPoint,
+                        request.Parameters,
+                        request.ConcurrentPolicy),
                     cancellationToken).ConfigureAwait(false);
 
                 if (outcome is TOutcome typedOutcome)
@@ -55,6 +59,17 @@ namespace Levity.Narrative.Naninovel
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 return NarrativeSessionResult<TOutcome>.Cancelled();
+            }
+            catch (NaninovelSessionCancelledException)
+            {
+                return NarrativeSessionResult<TOutcome>.Cancelled();
+            }
+            catch (NaninovelConcurrentSessionException exception)
+            {
+                return NarrativeSessionResult<TOutcome>.Failed(new NarrativeFailure(
+                    NarrativeFailureCode.ConcurrentSession,
+                    exception.Message,
+                    exception));
             }
             catch (NaninovelUnavailableException exception)
             {

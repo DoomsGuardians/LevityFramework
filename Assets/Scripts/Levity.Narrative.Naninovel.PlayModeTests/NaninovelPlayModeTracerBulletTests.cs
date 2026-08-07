@@ -129,6 +129,160 @@ namespace Levity.Narrative.Naninovel.Tests
         }
 
         [UnityTest]
+        public IEnumerator OverlappingRequestIsRejectedWithoutDisturbingActiveSession()
+        {
+            if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
+            var backend = NaninovelRuntimeBinding.CreateDefault().Module;
+            var first = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept")));
+
+            IChoiceHandlerActor handler = null;
+            for (var frame = 0; frame < 600 && handler == null; frame++)
+            {
+                handler = FindPresentedChoice();
+                yield return null;
+            }
+            Assert.That(handler, Is.Not.Null, "The first session did not reach its choice.");
+
+            var competingBackend = NaninovelRuntimeBinding.CreateDefault().Module;
+            var second = competingBackend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept")));
+            for (var frame = 0; frame < 60 && !second.IsCompleted; frame++) yield return null;
+
+            Assert.That(second.IsCompleted, Is.True, "Reject policy did not return immediately.");
+            Assert.That(second.Result.Status, Is.EqualTo(NarrativeSessionStatus.Failed));
+            Assert.That(second.Result.Failure.Code, Is.EqualTo(NarrativeFailureCode.ConcurrentSession));
+            Assert.That(first.IsCompleted, Is.False);
+
+            handler.HandleChoice(handler.Choices[0].Id);
+            for (var frame = 0; frame < 600 && !first.IsCompleted; frame++) yield return null;
+            Assert.That(first.Result.Status, Is.EqualTo(NarrativeSessionStatus.Completed));
+            Assert.That(first.Result.Outcome, Is.EqualTo("Accept"));
+        }
+
+        [UnityTest]
+        public IEnumerator RuntimePlayerIsTheDocumentedSharedInitializationOwner()
+        {
+            if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
+            var initialization = InitializeRuntimeTwiceAsync();
+            for (var frame = 0; frame < 600 && !initialization.IsCompleted; frame++)
+                yield return null;
+
+            Assert.That(
+                initialization.IsCompletedSuccessfully,
+                Is.True,
+                initialization.Exception?.ToString());
+            Assert.That(Engine.Initialized, Is.True);
+            Assert.That(
+                Engine.GetConfiguration<EngineConfiguration>().InitializeOnApplicationLoad,
+                Is.False,
+                "Naninovel automatic initialization competes with the runtime player owner.");
+            var legacyService = Type.GetType("NaninovelService, Assembly-CSharp", false);
+            if (legacyService != null)
+            {
+                var diagnostic = legacyService.GetCustomAttribute<ObsoleteAttribute>();
+                Assert.That(diagnostic.Message, Does.Contain("NaninovelRuntimePlayer"));
+                Assert.That(
+                    legacyService.GetMethod("InitializeAsync", BindingFlags.Instance | BindingFlags.NonPublic),
+                    Is.Null,
+                    "The legacy utility still owns a second initialization entry point.");
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator CancelPolicyCancelsNewRequestAndLeavesActiveSessionRunning()
+        {
+            if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
+            var backend = NaninovelRuntimeBinding.CreateDefault().Module;
+            var first = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept")));
+            IChoiceHandlerActor handler = null;
+            for (var frame = 0; frame < 600 && handler == null; frame++)
+            {
+                handler = FindPresentedChoice();
+                yield return null;
+            }
+
+            var cancelled = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept"),
+                concurrentPolicy: ConcurrentRequestPolicy.Cancel));
+            for (var frame = 0; frame < 60 && !cancelled.IsCompleted; frame++) yield return null;
+
+            Assert.That(cancelled.Result.Status, Is.EqualTo(NarrativeSessionStatus.Cancelled));
+            Assert.That(first.IsCompleted, Is.False);
+            handler.HandleChoice(handler.Choices[0].Id);
+            for (var frame = 0; frame < 600 && !first.IsCompleted; frame++) yield return null;
+            Assert.That(first.Result.Status, Is.EqualTo(NarrativeSessionStatus.Completed));
+        }
+
+        [UnityTest]
+        public IEnumerator WaitPolicyStartsOnlyAfterActiveSessionCompletes()
+        {
+            if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
+            var backend = NaninovelRuntimeBinding.CreateDefault().Module;
+            var first = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept")));
+            IChoiceHandlerActor firstHandler = null;
+            for (var frame = 0; frame < 600 && firstHandler == null; frame++)
+            {
+                firstHandler = FindPresentedChoice();
+                yield return null;
+            }
+
+            var waiting = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept"),
+                concurrentPolicy: ConcurrentRequestPolicy.Wait));
+            yield return null;
+            Assert.That(waiting.IsCompleted, Is.False);
+            firstHandler.HandleChoice(firstHandler.Choices[0].Id);
+            for (var frame = 0; frame < 600 && !first.IsCompleted; frame++) yield return null;
+            Assert.That(first.Result.Status, Is.EqualTo(NarrativeSessionStatus.Completed));
+
+            IChoiceHandlerActor waitingHandler = null;
+            for (var frame = 0; frame < 600 && waitingHandler == null; frame++)
+            {
+                waitingHandler = FindPresentedChoice();
+                yield return null;
+            }
+            Assert.That(waitingHandler, Is.Not.Null, "The waiting session never started.");
+            waitingHandler.HandleChoice(waitingHandler.Choices[0].Id);
+            for (var frame = 0; frame < 600 && !waiting.IsCompleted; frame++) yield return null;
+            Assert.That(waiting.Result.Status, Is.EqualTo(NarrativeSessionStatus.Completed));
+        }
+
+        [UnityTest]
+        public IEnumerator ReplacePolicyCancelsActiveSessionBeforeStartingReplacement()
+        {
+            if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
+            var backend = NaninovelRuntimeBinding.CreateDefault().Module;
+            var first = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept")));
+            IChoiceHandlerActor firstHandler = null;
+            for (var frame = 0; frame < 600 && firstHandler == null; frame++)
+            {
+                firstHandler = FindPresentedChoice();
+                yield return null;
+            }
+
+            var replacement = backend.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept"),
+                concurrentPolicy: ConcurrentRequestPolicy.Replace));
+            for (var frame = 0; frame < 600 && !first.IsCompleted; frame++) yield return null;
+            Assert.That(first.Result.Status, Is.EqualTo(NarrativeSessionStatus.Cancelled));
+
+            IChoiceHandlerActor replacementHandler = null;
+            for (var frame = 0; frame < 600 && replacementHandler == null; frame++)
+            {
+                replacementHandler = FindPresentedChoice();
+                yield return null;
+            }
+            Assert.That(replacementHandler, Is.Not.Null, "The replacement session never started.");
+            replacementHandler.HandleChoice(replacementHandler.Choices[0].Id);
+            for (var frame = 0; frame < 600 && !replacement.IsCompleted; frame++) yield return null;
+            Assert.That(replacement.Result.Status, Is.EqualTo(NarrativeSessionStatus.Completed));
+        }
+
+        [UnityTest]
         public IEnumerator PlaySaveRebuildAndLoadDoesNotRepeatGameplaySideEffect()
         {
             if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
@@ -223,6 +377,14 @@ namespace Levity.Narrative.Naninovel.Tests
             if (string.IsNullOrEmpty(id) || !manager.ActorExists(id)) return null;
             var handler = manager.GetActor(id);
             return handler.Choices.Count == 0 ? null : handler;
+        }
+
+        private static async Task InitializeRuntimeTwiceAsync()
+        {
+            var first = NaninovelRuntimePlayer.EnsureInitializedAsync();
+            var second = NaninovelRuntimePlayer.EnsureInitializedAsync();
+            await first;
+            await second;
         }
 
         private sealed class MemoryStore : IUnifiedSaveStore
