@@ -144,3 +144,8 @@ MonoBehaviour:
     - name: ScriptNavigatorUI
       pathPrefix: UI
       guid: 735d6aa767879aa469134858c5b2f0a7
+  - Id: Scripts
+    Resources:
+    - name: TracerBullet
+      pathPrefix: Scripts
+      guid: 0ee0f40e44de6784cadfe068cc0b4859

@@ -1,0 +1,25 @@
+{
+    "name": "Levity.Narrative.Naninovel",
+    "rootNamespace": "Levity.Narrative.Naninovel",
+    "references": [
+        "Levity.Narrative.Core",
+        "Levity.UnifiedSave",
+        "Levity.Narrative.Runtime",
+        "Elringus.Naninovel.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": ["NANINOVEL"],
+    "versionDefines": [
+        {
+            "name": "com.elringus.naninovel",
+            "expression": "",
+            "define": "NANINOVEL"
+        }
+    ],
+    "noEngineReferences": false
+}

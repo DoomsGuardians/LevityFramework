@@ -1,0 +1,28 @@
+{
+    "name": "Levity.Narrative.Naninovel.PlayModeTests",
+    "rootNamespace": "Levity.Narrative.Naninovel.Tests",
+    "references": [
+        "Levity.Narrative.Core",
+        "Levity.Narrative.Flow",
+        "Levity.Narrative.Naninovel",
+        "Levity.Narrative.Runtime",
+        "Levity.UnifiedSave",
+        "Elringus.Naninovel.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS", "NANINOVEL"],
+    "versionDefines": [
+        {
+            "name": "com.elringus.naninovel",
+            "expression": "",
+            "define": "NANINOVEL"
+        }
+    ],
+    "noEngineReferences": false,
+    "optionalUnityReferences": ["TestAssemblies"]
+}

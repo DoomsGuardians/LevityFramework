@@ -1,0 +1,27 @@
+{
+    "name": "Levity.Stage.Tests",
+    "rootNamespace": "Levity.Stage.Tests",
+    "references": [
+        "Levity.Stage",
+        "Levity.Stage.Compatibility",
+        "Levity.Narrative.Core",
+        "Levity.Narrative.Flow",
+        "Levity.UnifiedSave"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": true,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

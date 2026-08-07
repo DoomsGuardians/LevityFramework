@@ -1,0 +1,24 @@
+name: Docs lint
+
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "Assets/Scripts/**/*.cs"
+      - "Tools/doc-lint.ps1"
+      - ".github/workflows/docs-lint.yml"
+  push:
+    paths:
+      - "**/*.md"
+      - "Assets/Scripts/**/*.cs"
+      - "Tools/doc-lint.ps1"
+      - ".github/workflows/docs-lint.yml"
+
+jobs:
+  docs-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check documentation links and C# API examples
+        shell: pwsh
+        run: ./Tools/doc-lint.ps1

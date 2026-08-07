@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 152a604f7ea004245b5569f53d69586e, type: 3}
   m_Name: InputConfiguration
   m_EditorClassIdentifier: 
-  SpawnEventSystem: 1
+  SpawnEventSystem: 0
   CustomEventSystem: {fileID: 0}
-  SpawnInputModule: 1
+  SpawnInputModule: 0
   CustomInputModule: {fileID: 0}
-  InputActions: {fileID: 0}
-  ProcessLegacyBindings: 1
+  InputActions: {fileID: -944628639613478452, guid: c71b94b8568c4f0f878f7fba775d6d7b, type: 3}
+  ProcessLegacyBindings: 0
   TouchFrequencyLimit: 0.1
   TouchDistanceLimit: 25
   DetectInputMode: 1

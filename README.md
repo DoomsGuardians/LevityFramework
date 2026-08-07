@@ -2,6 +2,9 @@
 
 通用 Unity 游戏框架，从 LevityProject 项目中提取的可复用核心架构。
 
+> [!NOTE]
+> 本文描述当前代码。已接受但尚未完整实现的目标架构、历史提案和文档状态见 [`Docs/README.md`](Docs/README.md)。
+
 ## 框架特点
 
 - **服务定位器模式**：通过 GameRoot 单例统一管理所有服务
@@ -13,6 +16,44 @@
 - **状态机系统**：通用的有限状态机实现
 - **对象池**：内置对象池支持
 - **数据存档**：简单的 JSON 序列化存档系统
+
+---
+
+## 能力成熟度清单
+
+源码中存在某项能力，不代表它已经是稳定的公共架构。新增项目应优先采用 **Core**；**Toolkit** 需由项目主动选择；**Experimental** 尚未完成生产验证；**Deprecated** 仅用于兼容迁移，不应产生新的调用方。
+
+| 能力 | 成熟度 | 当前使用建议 |
+|------|--------|--------------|
+| `Levity.Narrative.Core` 契约与 Fake Backend | **Core** | 后端中立的 Narrative Session 公共边界；可直接依赖。 |
+| `Levity.Narrative.Naninovel` registry 与 adapter | **Core** | 用稳定 Sequence ID 映射 `.nani` script/label；Naninovel 包通过显式播放端口保持隔离。 |
+| `Levity.Narrative.Flow` tracer bullet | **Core** | 等待 typed outcome、执行 game-owned branch，并保存已提交 Gameplay Command execution ID，避免恢复后重复副作用。 |
+| `Levity.Narrative.Workspace` | **Supported Module** | 在不加载正式 Stage、Flow 或 Naninovel 的情况下枚举并播放叙事分支；入口见 [`Docs/workspaces/narrative-workspace.md`](Docs/workspaces/narrative-workspace.md)。 |
+| `Levity.Narrative.Placeholder` / `Levity.Stage.Workspace` | **Supported Module** | 通过事务式 Stage 路径加载任意注册关卡，并用运行时可选的 typed outcome 驱动 Flow；入口见 [`Docs/workspaces/stage-workspace.md`](Docs/workspaces/stage-workspace.md)。 |
+| `Levity.Narrative.Integration` | **Supported Module** | 同一份 Sequence ID 与 Flow 数据可在 Placeholder/Naninovel 后端间切换，并在播放前验证 mapping；入口见 [`Docs/workspaces/integration-workspace.md`](Docs/workspaces/integration-workspace.md)。 |
+| `Levity.UnifiedSave` | **Core** | versioned contributors 共同提交一个 slot；candidate 写入或 contributor 失败时保留上一个有效存档。 |
+| `Levity.Composition` | **Core** | 显式注册模块并执行确定性的 Initialize、Start 与逆序 Shutdown；新模块优先使用。 |
+| `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
+| `RoleSystem` | **Experimental** | 仍依赖 `GameRoot` 与枚举角色类型；仅供现有项目迁移验证。 |
+| `MonoItemSystem` | **Experimental** | 场景扫描式生命周期尚缺少完整的所有权与回归测试。 |
+| `FSM`（`IState` / `StateMachineBase`） | **Toolkit** | 可选的通用状态机工具，不是框架强制的 Game Flow 模型。 |
+| `BindableProperty` / `ObservableList` | **Toolkit** | 可按项目选用；不构成统一状态管理方案。 |
+| `GenericPool` / `IPoolable` | **Toolkit** | 可选对象池；与资源加载职责保持分离。 |
+| `LazySingleton<T>` | **Toolkit** | 仅用于确实需要进程级唯一实例的纯 C# 工具。 |
+| `SceneSingleton<T>` | **Experimental** | 自动查找/创建会隐藏场景所有权；新代码优先显式 Composition。 |
+| `MonoSingleton<T>` | **Deprecated** | 为 `GameRoot` 等旧入口保留；不要新增基于它的全局服务。 |
+| `PersistentSingleton<T>` | **Deprecated** | 自动创建和 `DontDestroyOnLoad` 会隐藏生命周期；仅兼容旧调用。 |
+| `UILayer` / `UILayerManager` | **Core** | 当前 UI 分层模型；新窗口使用 `UILayer`。 |
+| Command ScriptableObjects | **Experimental** | 现有加载场景效果可用，但尚未形成稳定的公共命令契约。 |
+
+### 已知未消费的 Stage 配置
+
+以下字段当前会显示在 `GameStageConfig` Inspector 中，但 `StageSystem` 不读取它们。填写这些字段不会产生运行时行为；在消费路径实现或迁移完成前，不应把它们作为关卡能力使用。
+
+| 字段 | 当前状态 |
+|------|----------|
+| `StageConfigItem.RoleConfig` | **未消费**：`RoleSystem` 不会在 Stage 加载时应用该配置。 |
+| `StageConfigItem.preLoadItems` | **未消费**：Stage 加载流程不会预加载该资产。 |
 
 ---
 
@@ -59,57 +100,37 @@ GameRoot (单例服务定位器)
 ## 目录结构
 
 ```
-Assets/Scripts/Core/
-├── GameCommand/              # 核心指令模块
-│   ├── Interface/            # 接口定义
-│   │   ├── ILogic.cs         # 服务/系统生命周期接口
-│   │   └── IMonoLogic.cs     # MonoBehaviour 生命周期接口
-│   │
-│   ├── GameTool/             # 工具类
-│   │   ├── Singleton/        # 单例模式
-│   │   ├── BindableProperty/ # 可观察属性
-│   │   └── ToolFunction/     # 工具函数
-│   │
-│   ├── GameConfig/           # 配置和枚举
-│   │   └── GameEnum.cs       # 通用枚举定义
-│   │
-│   ├── GameMode/             # 游戏模式
-│   │   └── GameModeBase.cs   # 游戏模式基类
-│   │
-│   ├── Manager/              # 管理器
-│   │   └── ManagerBase.cs    # 管理器基类
-│   │
-│   ├── Window/               # UI 窗口
-│   │   ├── WindowBase.cs     # 窗口基类
-│   │   ├── WindowBehaviour.cs
-│   │   └── UIListener.cs     # UI 事件监听器
-│   │
-│   └── GameRoot.cs           # 游戏根节点（单例）
-│
-├── GameService/              # 服务层
-│   ├── EventService/         # 事件服务
-│   ├── TimerService/         # 定时器服务
-│   ├── UIService/            # UI 服务
-│   ├── ResService/           # 资源服务
-│   ├── AudioService/         # 音频服务
-│   ├── DataService/          # 数据存档服务
-│   ├── InputService.cs       # 输入服务
-│   └── ManagerService.cs     # Manager 管理服务
-│
-├── GameSystem/               # 系统层
-│   ├── RoleSystem/           # 角色系统
-│   ├── StageSystem/          # 关卡系统
-│   └── MonoItemSystem/       # 场景物件系统
-│
-├── Interaction/              # 交互模块
-│   └── FSM/                  # 状态机
-│       ├── IState.cs
-│       └── StateMachineBase.cs
-│
-└── Utils/                    # 工具扩展
-    ├── LogExtensions.cs      # 日志扩展
-    ├── DOTweenExtensions.cs  # DOTween 扩展
-    └── UnityExtensions.cs    # Unity 扩展方法
+Assets/Levity/Runtime/Levity.Narrative.Core/
+├── NarrativeContracts.cs    # 后端中立的叙事会话、结果、并发与保存许可契约
+└── FakeNarrativeBackend.cs  # EditMode 测试与 Placeholder Backend 共用实现
+
+Assets/Levity/Runtime/Levity.Narrative.Workspace/
+├── NarrativeWorkspace.cs    # 无 Stage/Flow 资产的序列目录、分支选择与运行入口
+└── FakeWorkspaceState.cs    # 可检查的假游戏状态、带类型命令及调用日志
+
+Assets/Levity/Runtime/Levity.Narrative.Placeholder/
+└── PlaceholderNarrativeBackend.cs # 列出 typed outcomes 并等待 operator 选择的生产后端
+
+Assets/Levity/Runtime/Levity.Stage.Workspace/
+└── StageWorkspace.cs        # 事务式 Stage commit 后运行 Placeholder-backed Flow
+
+Assets/Levity/Runtime/Levity.Narrative.Integration/
+└── IntegrationWorkspace.cs  # 不改写 Flow 数据的 backend 切换与 mapping 验证
+
+Assets/Levity/Unity/Application/
+├── Interface/                # 服务/系统生命周期接口
+├── GameConfig/               # 配置和枚举
+├── GameMode/                 # 游戏模式
+├── Manager/                  # Manager 基类
+├── Window/                   # UI 窗口
+└── GameRoot.cs               # 游戏根节点与 composition root
+
+Assets/Levity/Unity/Services/ # Event、Timer、UI、Resource、Audio、Data、Input、Manager
+Assets/Levity/Unity/Systems/  # Role、Stage 与 MonoItem 系统
+Assets/Levity/Runtime/Interaction/FSM/ # 可复用状态机
+Assets/Levity/Unity/Utilities/         # Unity 与 DOTween 扩展
+Assets/Levity/Tests/                    # EditMode / PlayMode 测试程序集
+Assets/Levity/Editor/                   # Workspace 与项目配置工具
 ```
 
 ---
@@ -155,7 +176,7 @@ public struct HitTargetEvent : IEvent
 // 2. 注册事件监听
 EventBinding<HitTargetEvent> binding = EventBus<HitTargetEvent>.Register(OnHitTarget);
 
-// 3. 带优先级注册（数字越小越先执行）
+// 3. 带优先级注册（数字越大越先执行）
 EventBus<HitTargetEvent>.Register(OnHitTarget, priority: -10);
 
 // 4. 一次性监听（触发一次后自动注销）
@@ -187,6 +208,10 @@ binding.Unregister();
 支持多种时间类型的定时器系统。
 
 ```csharp
+// 下列回调由游戏项目提供。
+// doc-lint: ignore OnTimerTick
+// doc-lint: ignore OnCancel
+// doc-lint: ignore OnLoopEnd
 // 时间类型
 // - TimerType.RealTime: 真实时间，不受 TimeScale 影响
 // - TimerType.ScaledTime: 受 TimeScale 影响的游戏时间
@@ -221,14 +246,17 @@ int remaining = timerService.QueryRemaining(timerId);  // 查询剩余时间
 管理 UI 窗口的打开、关闭和层级。
 
 ```csharp
-// 打开窗口
-var window = uiService.OpenWindow<MyWindow>(WindowLayer.Normal);
+// MyWindow 是游戏项目自己的窗口类型。
+// doc-lint: ignore MyWindow
+// 窗口需要先以名称注册，再显示
+uiService.RegisterWindow("settings", settingsWindow);
+var window = uiService.ShowWindow<MyWindow>("settings");
 
 // 关闭窗口
-uiService.CloseWindow<MyWindow>();
+uiService.HideWindow("settings");
 
 // 获取已打开的窗口
-var window = uiService.GetWindow<MyWindow>();
+var window = uiService.GetWindow<MyWindow>("settings");
 ```
 
 ### ManagerService 管理器服务
@@ -299,15 +327,16 @@ public class InventorySystem : ILogic
 }
 ```
 
-在 GameRoot.cs 中注册：
+通过派生的项目 Composition Root 注册，不要修改框架的 `GameRoot.Start()`：
 
 ```csharp
-// 在 Start() 的系统初始化区域添加
-public InventorySystem inventorySystem;
-
-// 在 #region 初始化系统模块 中
-inventorySystem = new InventorySystem();
-systemList.Add(inventorySystem);
+public sealed class MyGameRoot : GameRoot
+{
+    protected override void RegisterCustomSystems(List<ILogic> systems)
+    {
+        systems.Add(new InventorySystem());
+    }
+}
 ```
 
 ### RoleSystem 角色系统
@@ -348,6 +377,9 @@ using LevityEvents;
 
 public class BattleManager : ManagerBase
 {
+    // ResetBattle / SaveProgress 是游戏项目自己的业务方法。
+    // doc-lint: ignore ResetBattle
+    // doc-lint: ignore SaveProgress
     private int score;
     private bool isPaused;
     private EventBinding<HitTargetEvent> hitBinding;
@@ -447,6 +479,8 @@ GameMode 控制游戏的整体状态流转。
 ### 创建自定义 GameMode
 
 ```csharp
+// BattleHUD 是游戏项目自己的窗口类型。
+// doc-lint: ignore BattleHUD
 public class BattleGameMode : GameModeBase
 {
     public BattleGameMode() : base(GameMode.GamePlay) { }
@@ -456,7 +490,7 @@ public class BattleGameMode : GameModeBase
         base.EnterGameMode();
 
         // 进入战斗模式
-        uIService.OpenWindow<BattleHUD>(WindowLayer.Normal);
+        uIService.ShowWindow<BattleHUD>("battle-hud");
 
         // 添加定时器
         timerService.AddLoopTimer(TimerType.ScaledTime, 1000, UpdateTimer, null, null, -1);
@@ -465,7 +499,7 @@ public class BattleGameMode : GameModeBase
     public override void OnUpdate()
     {
         // 每帧更新战斗逻辑
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (inputService.JumpPressed)
         {
             GameRoot.ChangeGameMode(GameMode.Pause);
         }
@@ -474,7 +508,7 @@ public class BattleGameMode : GameModeBase
     public override void UnOnInit()
     {
         // 退出战斗模式时清理
-        uIService.CloseWindow<BattleHUD>();
+        uIService.HideWindow("battle-hud");
     }
 
     private void UpdateTimer()
@@ -487,6 +521,9 @@ public class BattleGameMode : GameModeBase
 ### 注册和切换 GameMode
 
 ```csharp
+// MainMenuGameMode / PauseGameMode 是游戏项目自己的模式实现。
+// doc-lint: ignore MainMenuGameMode
+// doc-lint: ignore PauseGameMode
 // 1. 在 GameEnum.cs 中添加枚举值
 public enum GameMode
 {
@@ -497,19 +534,14 @@ public enum GameMode
     GameOver,
 }
 
-// 2. 在 GameRoot.InitGameModes() 中注册
-private void InitGameModes()
+// 2. 在项目自己的 GameRoot 派生类中注册
+public sealed class MyGameRoot : GameRoot
 {
-    RegisterGameMode(new DefaultGameMode());
-    RegisterGameMode(new MainMenuGameMode());
-    RegisterGameMode(new BattleGameMode());
-    RegisterGameMode(new PauseGameMode());
-
-    // 设置初始模式
-    if (GameModeDic.TryGetValue(GameMode.GameStart, out var defaultMode))
+    protected override void RegisterCustomGameModes()
     {
-        currentGameMode = defaultMode;
-        currentGameMode.EnterGameMode();
+        RegisterGameMode(new MainMenuGameMode());
+        RegisterGameMode(new BattleGameMode());
+        RegisterGameMode(new PauseGameMode());
     }
 }
 
@@ -543,15 +575,13 @@ public class SettingsWindow : WindowBase
 
     public override void OnShow()
     {
-        // 窗口显示时刷新数据
-        volumeSlider.value = dataService.GameData.volume;
-        musicToggle.isOn = dataService.GameData.musicEnabled;
+        // 窗口显示时刷新当前服务状态
+        volumeSlider.value = audioService.BGMVolume;
     }
 
     public override void OnHide()
     {
-        // 窗口隐藏时保存数据
-        dataService.SaveGameData();
+        // 窗口隐藏时执行必要清理
     }
 
     public override void OnUpdate()
@@ -567,12 +597,12 @@ public class SettingsWindow : WindowBase
 
     private void OnCloseClick()
     {
-        uIService.CloseWindow<SettingsWindow>();
+        uIService.HideWindow("settings");
     }
 
     private void OnMusicToggleChanged(Toggle toggle, bool isOn)
     {
-        audioService.SetMusicEnabled(isOn);
+        audioService.SetBGMVolume(isOn ? volumeSlider.value : 0f);
     }
 }
 ```
@@ -582,6 +612,9 @@ public class SettingsWindow : WindowBase
 ```csharp
 public class ItemSlot : WindowBase
 {
+    // OnSlotEnter / OnSlotExit 是游戏项目自己的指针事件处理函数。
+    // doc-lint: ignore OnSlotEnter
+    // doc-lint: ignore OnSlotExit
     [SerializeField] private UIListener slotListener;
 
     public override void OnAwake()
@@ -686,27 +719,26 @@ if (gameRoot.IsInputChannelAvailable(InputChannel.Gameplay))
 
 ## 扩展指南
 
-### 添加新的 EventID
+### 添加新的事件
 
-在 `GameService/EventService/EventService.cs` 中的 `EventID` 枚举添加新的事件类型。
+创建实现 `IEvent` 的结构体，通过 `EventBus<T>.Register` 和 `EventBus<T>.Raise` 使用。当前事件系统不再使用 `EventID` 枚举。
 
 ### 添加新的 GameMode
 
 1. 创建继承 `GameModeBase` 的新类
-2. 在 `GameRoot.InitGameModes()` 中注册
-3. 在 `GameEnum.cs` 中添加对应的枚举值
+2. 在 `GameEnum.cs` 中添加对应的枚举值
+3. 在派生 `GameRoot` 的 `RegisterCustomGameModes()` 中调用 `RegisterGameMode()`
 
 ### 添加新的 Service
 
 1. 创建实现 `ILogic` 接口的新类
-2. 在 `GameRoot.Start()` 中实例化并添加到 `serviceList`
-3. 在 `GameRoot` 中添加公开字段以供访问
+2. 在派生 `GameRoot` 的 `RegisterCustomServices()` 中加入服务列表
+3. 若需要全局访问，为该服务显式注册稳定接口；不要继续扩展 `Services.GetFromGameRoot()` 的类型分支
 
 ### 添加新的 System
 
 1. 创建实现 `ILogic` 接口的新类
-2. 在 `GameRoot.Start()` 中实例化并添加到 `systemList`
-3. 在 `GameRoot` 中添加公开字段以供访问
+2. 在派生 `GameRoot` 的 `RegisterCustomSystems()` 中加入系统列表
 
 ### 扩展 GameData
 
@@ -719,10 +751,10 @@ if (gameRoot.IsInputChannelAvailable(InputChannel.Gameplay))
 - Unity 2022.3 LTS 或更高版本
 - Unity Input System Package
 - **DOTween** - 动画库 (Asset Store 或 OpenUPM)
-- **Odin Inspector** - 编辑器增强 (Asset Store)
+- **Odin Inspector** - 当前源码使用其属性和 `SerializedScriptableObject`
 - **Naninovel** - 视觉小说引擎 (可选，需要定义 NANINOVEL 宏)
 
-> 如果不想安装 Odin Inspector，可以移除 GameRoot.cs 中的 `#region Inspector Debug (Odin)` 区域和相关 using 语句。
+> 当前仓库已经包含 Odin，并在多个类型中使用。移除 Odin 需要替换相关属性和基类，不只是删除 `GameRoot.cs` 的 Inspector 区域。
 
 ---
 

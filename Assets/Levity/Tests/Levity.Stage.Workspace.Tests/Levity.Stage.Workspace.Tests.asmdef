@@ -1,0 +1,21 @@
+{
+    "name": "Levity.Stage.Workspace.Tests",
+    "rootNamespace": "Levity.Stage.Workspace.Tests",
+    "references": [
+        "Levity.Narrative.Core",
+        "Levity.Narrative.Flow",
+        "Levity.Narrative.Placeholder",
+        "Levity.Stage",
+        "Levity.Stage.Workspace"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+    "versionDefines": [],
+    "noEngineReferences": true,
+    "optionalUnityReferences": ["TestAssemblies"]
+}
