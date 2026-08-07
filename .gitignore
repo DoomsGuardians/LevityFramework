@@ -28,6 +28,7 @@
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -106,7 +107,8 @@ TestResults*.xml
 **/[Tt]est[Ss]cenes/
 **/[Ss]andbox/
 .claude/settings.local.json
-Assets/NaninovelData/.nani/Transient/Bridging/Server
+# Naninovel runtime/editor cache, local bridge IDs, metadata, and saves.
+Assets/NaninovelData/.nani/Transient/
 
 # Additional IDE files
 .fleet/
