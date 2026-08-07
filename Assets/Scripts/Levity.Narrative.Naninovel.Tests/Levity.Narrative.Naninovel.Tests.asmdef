@@ -3,7 +3,9 @@
     "rootNamespace": "Levity.Narrative.Naninovel.Tests",
     "references": [
         "Levity.Narrative.Core",
-        "Levity.Narrative.Naninovel"
+        "Levity.Narrative.Naninovel",
+        "Levity.Narrative.Runtime",
+        "Levity.UnifiedSave"
     ],
     "includePlatforms": ["Editor"],
     "excludePlatforms": [],
@@ -11,8 +13,14 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": false,
-    "defineConstraints": ["UNITY_INCLUDE_TESTS"],
-    "versionDefines": [],
+    "defineConstraints": ["UNITY_INCLUDE_TESTS", "NANINOVEL"],
+    "versionDefines": [
+        {
+            "name": "com.elringus.naninovel",
+            "expression": "",
+            "define": "NANINOVEL"
+        }
+    ],
     "noEngineReferences": true,
     "optionalUnityReferences": ["TestAssemblies"]
 }

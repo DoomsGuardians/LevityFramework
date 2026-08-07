@@ -7,9 +7,7 @@ using System.Linq;
 using DG.Tweening;
 using Levity.Composition;
 using Levity.Narrative.Core;
-#if NANINOVEL
-using Levity.Narrative.Naninovel;
-#endif
+using Levity.Narrative.Runtime;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -51,9 +49,8 @@ public class GameRoot : MonoSingleton<GameRoot>
 
 #if NANINOVEL
     public NaninovelService naninovelService;
-    public NarrativeSequenceRegistry narrativeSequenceRegistry;
-    public INarrativeModule narrativeModule;
 #endif
+    public INarrativeModule narrativeModule;
 
     /// <summary>
     /// 派生类覆写以注册项目特定的服务（例如自定义存档、网络服务等）。
@@ -160,12 +157,14 @@ public class GameRoot : MonoSingleton<GameRoot>
         serviceList.Add(timerService);
 
 #if NANINOVEL
-        narrativeSequenceRegistry = NaninovelSequenceCatalog.CreateDefault();
         naninovelService = new NaninovelService();
         serviceList.Add(naninovelService);
-        narrativeModule = new NaninovelNarrativeBackend(narrativeSequenceRegistry, naninovelService);
-        dataService.SetSaveAvailabilitySource(() => narrativeModule.SaveAvailability);
 #endif
+        if (NarrativeRuntime.TryCreate(out var narrativeRuntime))
+        {
+            narrativeModule = narrativeRuntime.Module;
+            serviceList.Add(new NarrativeRuntimeLogic(dataService, narrativeRuntime));
+        }
 
         RegisterCustomServices(serviceList);
 
@@ -355,6 +354,28 @@ public class GameRoot : MonoSingleton<GameRoot>
         }
     }
     #endregion
+
+    private sealed class NarrativeRuntimeLogic : ILogic
+    {
+        private readonly DataService dataService;
+        private readonly NarrativeRuntimeBinding binding;
+
+        public NarrativeRuntimeLogic(DataService dataService, NarrativeRuntimeBinding binding)
+        {
+            this.dataService = dataService;
+            this.binding = binding;
+        }
+
+        public void OnInit()
+        {
+            dataService.AddUnifiedSaveContributor(binding.SaveContributor);
+            dataService.SetSaveAvailabilitySource(() => binding.Module.SaveAvailability);
+        }
+
+        public void OnEnterState() { }
+        public void OnUpdate() { }
+        public void UnInit() { }
+    }
 }
 
 /// <summary>

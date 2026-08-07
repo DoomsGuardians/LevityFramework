@@ -90,6 +90,17 @@ namespace Levity.Narrative.Naninovel.Tests
             Assert.That(resolved.ScriptPath, Is.EqualTo("Mission/Revised"));
         }
 
+        [Test]
+        public void DefaultRuntimeBindingProvidesNarrativeAndUnifiedSaveCapabilities()
+        {
+            var binding = NaninovelRuntimeBinding.CreateDefault();
+
+            Assert.That(binding.Module, Is.Not.Null);
+            Assert.That(binding.SaveContributor, Is.Not.Null);
+            Assert.That(binding.SaveContributor.Id, Is.EqualTo("narrative"));
+            Assert.That(binding.Module.SaveAvailability.CanSave, Is.True);
+        }
+
         private sealed class RecordingPlayer : INaninovelPlayer
         {
             private readonly object outcome;

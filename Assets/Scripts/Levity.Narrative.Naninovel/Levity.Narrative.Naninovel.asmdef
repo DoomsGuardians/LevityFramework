@@ -4,6 +4,7 @@
     "references": [
         "Levity.Narrative.Core",
         "Levity.UnifiedSave",
+        "Levity.Narrative.Runtime",
         "Elringus.Naninovel.Runtime"
     ],
     "includePlatforms": [],
@@ -12,7 +13,13 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
-    "versionDefines": [],
+    "defineConstraints": ["NANINOVEL"],
+    "versionDefines": [
+        {
+            "name": "com.elringus.naninovel",
+            "expression": "",
+            "define": "NANINOVEL"
+        }
+    ],
     "noEngineReferences": false
 }

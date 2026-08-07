@@ -1,0 +1,17 @@
+{
+    "name": "Levity.Narrative.Runtime",
+    "rootNamespace": "Levity.Narrative.Runtime",
+    "references": [
+        "Levity.Narrative.Core",
+        "Levity.UnifiedSave"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

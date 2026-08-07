@@ -15,6 +15,7 @@
   <Project Path="Levity.Narrative.Flow.Tests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Levity.UnifiedSave.csproj" />
+  <Project Path="Levity.Narrative.Runtime.csproj" />
   <Project Path="Levity.Narrative.Naninovel.csproj" />
   <Project Path="Levity.Narrative.Naninovel.PlayModeTests.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />

@@ -50,6 +50,10 @@ Levity.Narrative.Flow
 ├── input and outcome schema integration
 └── scene-transition policy
 
+Levity.Narrative.Runtime
+├── optional backend registration seam
+└── module plus unified-save binding
+
 Levity.Narrative.Naninovel
 ├── Naninovel backend adapter
 ├── sequence registry mapping
@@ -63,7 +67,7 @@ Levity.Narrative.Editor
 └── flow-node to .nani navigation
 ```
 
-Unity assembly definitions enforce this direction: Flow depends on Core; the Naninovel adapter depends on Core and Naninovel; Editor tooling depends on the public contracts it validates. Core contains no Naninovel types. The adapter is an optional package, while a game that selects it treats it as a required build dependency.
+Unity assembly definitions enforce this direction: Flow depends on Core; Runtime depends on Core and Unified Save; the Naninovel adapter depends on Runtime and Naninovel; Editor tooling depends on the public contracts it validates. Core and Runtime contain no Naninovel types. The adapter assembly uses a package-backed version define and define constraint, so it and its tests leave compilation when Naninovel is absent.
 
 ## Runtime Contract
 
@@ -127,9 +131,9 @@ Editor validation detects missing backends, unknown sequence IDs, missing script
 
 ## Composition and Migration
 
-`GameRoot` selects and registers the narrative module through the backend-neutral contract. The concrete Naninovel adapter appears only in the composition root and its own integration assembly. This change establishes a clean new seam without requiring an immediate framework-wide service-locator rewrite.
+`GameRoot` discovers an optional `NarrativeRuntimeBinding` through the backend-neutral Runtime seam. An installed adapter registers one factory before scene load; the binding contributes both its narrative module and its unified-save contributor after `DataService` initializes. The concrete Naninovel adapter never appears in `GameRoot`, and removing its package leaves the rest of the project compilable.
 
-The existing `NaninovelService` and Naninovel-specific stage configuration are wrapped by a compatibility adapter. Existing references map to sequence IDs, receive deprecation diagnostics, and migrate incrementally. The compatibility entry points are removed after content and callers use the new contracts.
+The existing `NaninovelService` and Naninovel-specific stage configuration remain compatibility presentation entry points. They no longer implement the Narrative Backend or duplicate unified-save contribution. Existing references migrate incrementally and are removed after content and callers use the new contracts.
 
 ## Verification Strategy
 
@@ -141,6 +145,7 @@ Tests assert observable behavior rather than adapter internals:
 - Unified-save round trips cover dialogue position, choices, gameplay state, settings, and committed side effects.
 - Failure tests prove that a contributor failure preserves the prior valid save.
 - Editor tests cover invalid sequence IDs, parameter and outcome schemas, missing scripts, and absent backend packages.
+- A package-absent project copy compiles and runs all non-Naninovel EditMode tests.
 
 ## First Tracer Bullet
 

@@ -7,20 +7,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Naninovel;
 using Naninovel.Async;
 using UnityEngine;
 using LevityEvents;
-using Levity.Narrative.Core;
-using Levity.Narrative.Naninovel;
-using Levity.UnifiedSave;
 
 /// <summary>
 /// Naninovel 视觉小说框架的集成服务
 /// 提供脚本播放、对话队列、输入管理等功能
 /// </summary>
-public class NaninovelService : ILogic, INaninovelPlayer, IUnifiedSaveContributor
+public class NaninovelService : ILogic
 {
     private UniTask initializationTask = UniTask.CompletedTask;
     private bool initializationRequested;
@@ -47,70 +43,6 @@ public class NaninovelService : ILogic, INaninovelPlayer, IUnifiedSaveContributo
 
     public Camera NaniCamera => TryGetNaninovelCamera(out var camera) ? camera : null;
 
-    string IUnifiedSaveContributor.Id => "narrative";
-    int IUnifiedSaveContributor.Version => 1;
-
-    async Task<string> IUnifiedSaveContributor.CaptureAsync(CancellationToken cancellationToken)
-    {
-        await EnsureInitializedAsync(cancellationToken);
-        var stateManager = Engine.GetService<IStateManager>();
-        if (stateManager == null) throw new InvalidOperationException("Naninovel state manager is unavailable.");
-        stateManager.PushRollbackSnapshot(allowPlayerRollback: false);
-        var state = stateManager.PeekRollbackStack();
-        if (state == null) throw new InvalidOperationException("Naninovel failed to capture narrative state.");
-        return JsonUtility.ToJson(state);
-    }
-
-    async Task IUnifiedSaveContributor.RestoreAsync(
-        int version,
-        string state,
-        CancellationToken cancellationToken)
-    {
-        if (version != 1) throw new InvalidOperationException($"Unsupported Naninovel save version {version}.");
-        await EnsureInitializedAsync(cancellationToken);
-        var stateManager = Engine.GetService<IStateManager>();
-        if (stateManager == null) throw new InvalidOperationException("Naninovel state manager is unavailable.");
-        var narrativeState = JsonUtility.FromJson<GameStateMap>(state);
-        if (narrativeState == null) throw new InvalidOperationException("Naninovel save contribution is invalid.");
-        var temporarySlot = $"levity-restore-{Guid.NewGuid():N}";
-        try
-        {
-            await stateManager.GameSlotManager.Save(temporarySlot, narrativeState);
-            await stateManager.LoadGame(temporarySlot);
-        }
-        finally
-        {
-            stateManager.GameSlotManager.DeleteSaveSlot(temporarySlot);
-        }
-    }
-
-    SaveAvailability INaninovelPlayer.SaveAvailability => SaveAvailability.Allowed;
-
-    async Task<object> INaninovelPlayer.PlayAsync(
-        NaninovelPlaybackRequest request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await EnsureInitializedAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            throw new NaninovelUnavailableException(
-                "Naninovel failed to initialize for narrative playback.",
-                exception);
-        }
-
-        await PlayScriptAsync(
-            request.ScriptPath,
-            request.EntryPoint,
-            waitForCompletion: true,
-            pauseGameplayInput: true,
-            stopCurrent: true,
-            cancellationToken: cancellationToken);
-        return null;
-    }
-
     public void OnInit()
     {
         gameRoot = GameRoot.Instance;
@@ -120,12 +52,6 @@ public class NaninovelService : ILogic, INaninovelPlayer, IUnifiedSaveContributo
         initializationTask = InitializeAsync(lifetimeCts.Token);
         initializationRequested = true;
 
-        // 注册存档钩子到 DataService
-        var dataService = gameRoot?.dataService;
-        if (dataService != null)
-        {
-            dataService.AddUnifiedSaveContributor(this);
-        }
     }
     public void OnUpdate() { }
 

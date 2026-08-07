@@ -9,6 +9,7 @@ using Levity.Narrative.Flow;
 using Levity.UnifiedSave;
 using Naninovel;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.TestTools;
 
 namespace Levity.Narrative.Naninovel.Tests
@@ -22,12 +23,82 @@ namespace Levity.Narrative.Naninovel.Tests
         }
 
         [UnityTest]
+        public IEnumerator GameRootDiscoversTheInstalledNarrativeRuntime()
+        {
+            var rootType = Type.GetType("GameRoot, Assembly-CSharp", throwOnError: true);
+            var gameObject = new GameObject("Production GameRoot composition test");
+            var root = gameObject.AddComponent(rootType);
+            rootType.GetField("TestStageID", BindingFlags.Instance | BindingFlags.Public)
+                .SetValue(root, 0);
+
+            yield return null;
+
+            var moduleField = rootType.GetField(
+                "narrativeModule", BindingFlags.Instance | BindingFlags.Public);
+            Assert.That(moduleField, Is.Not.Null,
+                "GameRoot does not expose the backend-neutral Narrative Runtime.");
+            Assert.That(moduleField.GetValue(root), Is.AssignableTo<INarrativeModule>());
+            UnityEngine.Object.DestroyImmediate(gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator GameRootBlocksSavingWhileItsNarrativeSessionIsActive()
+        {
+            const int slot = 987653;
+            var rootType = Type.GetType("GameRoot, Assembly-CSharp", throwOnError: true);
+            var gameObject = new GameObject("Production Narrative Runtime save test");
+            var root = gameObject.AddComponent(rootType);
+            rootType.GetField("TestStageID", BindingFlags.Instance | BindingFlags.Public)
+                .SetValue(root, 0);
+            yield return null;
+
+            var module = (INarrativeModule)rootType
+                .GetField("narrativeModule", BindingFlags.Instance | BindingFlags.Public)
+                .GetValue(root);
+            var play = module.PlayAsync<string>(new NarrativeRequest(
+                new NarrativeSequenceId("stage.mission.accept")));
+            IChoiceHandlerActor handler = null;
+            for (var frame = 0; frame < 600 && handler == null; frame++)
+            {
+                handler = FindPresentedChoice();
+                yield return null;
+            }
+            Assert.That(handler, Is.Not.Null, "The production Narrative Session did not present its choice.");
+
+            var dataService = rootType
+                .GetField("dataService", BindingFlags.Instance | BindingFlags.Public)
+                .GetValue(root);
+            var dataServiceType = dataService.GetType();
+            dataServiceType.GetMethod("DeleteSlot", BindingFlags.Instance | BindingFlags.Public)
+                .Invoke(dataService, new object[] { slot });
+            var saving = (Task)dataServiceType
+                .GetMethod("SaveToSlot", BindingFlags.Instance | BindingFlags.Public)
+                .Invoke(dataService, new object[] { slot });
+            while (!saving.IsCompleted) yield return null;
+
+            var result = saving.GetType().GetProperty("Result").GetValue(saving);
+            Assert.That(
+                result.GetType().GetProperty("Status").GetValue(result).ToString(),
+                Is.EqualTo("Blocked"));
+            Assert.That(
+                result.GetType().GetProperty("BlockedReason").GetValue(result),
+                Is.Not.Empty);
+            Assert.That(
+                (bool)dataServiceType.GetMethod("SlotExists").Invoke(dataService, new object[] { slot }),
+                Is.False);
+
+            handler.HandleChoice(handler.Choices[0].Id);
+            for (var frame = 0; frame < 600 && !play.IsCompleted; frame++) yield return null;
+            Assert.That(play.IsCompletedSuccessfully, Is.True);
+            UnityEngine.Object.DestroyImmediate(gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RealChoiceBlocksSavingAndReturnsTypedOutcome()
         {
             if (Engine.Initialized || Engine.Initializing) Engine.Destroy();
-            var backend = new NaninovelNarrativeBackend(
-                NaninovelSequenceCatalog.CreateDefault(),
-                new NaninovelRuntimePlayer());
+            var binding = NaninovelRuntimeBinding.CreateDefault();
+            var backend = binding.Module;
             var play = backend.PlayAsync<string>(new NarrativeRequest(
                 new NarrativeSequenceId("stage.mission.accept")));
 
@@ -67,8 +138,8 @@ namespace Levity.Narrative.Naninovel.Tests
             commands.Register("grant-key", () => sideEffectCount++);
             var flow = NarrativeFlowNode<string>.Create(new NarrativeSequenceId("stage.mission.accept"))
                 .On("Accept", "grant-key", executionId, "mission-accepted");
-            var backend = new NaninovelNarrativeBackend(
-                NaninovelSequenceCatalog.CreateDefault(), new NaninovelRuntimePlayer());
+            var binding = NaninovelRuntimeBinding.CreateDefault();
+            var backend = binding.Module;
             var play = flow.PlayAsync(backend, commands);
 
             IChoiceHandlerActor handler = null;
@@ -86,7 +157,7 @@ namespace Levity.Narrative.Naninovel.Tests
             var store = new MemoryStore();
             var save = new UnifiedSave.UnifiedSave(
                 store,
-                new NaninovelUnifiedSaveContributor(),
+                binding.SaveContributor,
                 new CommandContributor(commands));
             var saving = save.TrySaveAsync("tracer");
             for (var frame = 0; frame < 600 && !saving.IsCompleted; frame++) yield return null;
@@ -99,9 +170,10 @@ namespace Levity.Narrative.Naninovel.Tests
 
             var restoredCommands = new GameplayCommandExecutor();
             restoredCommands.Register("grant-key", () => sideEffectCount++);
+            var restoredBinding = NaninovelRuntimeBinding.CreateDefault();
             var restored = new UnifiedSave.UnifiedSave(
                 store,
-                new NaninovelUnifiedSaveContributor(),
+                restoredBinding.SaveContributor,
                 new CommandContributor(restoredCommands));
             var loading = restored.LoadAsync("tracer");
             for (var frame = 0; frame < 600 && !loading.IsCompleted; frame++) yield return null;
