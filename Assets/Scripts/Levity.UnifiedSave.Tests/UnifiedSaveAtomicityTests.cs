@@ -40,12 +40,70 @@ namespace Levity.UnifiedSave.Tests
                     restoredNarrative,
                     restoredSettings,
                     restoredCommands);
-                restore.LoadAsync("slot-1").GetAwaiter().GetResult();
+                var loadResult = restore.TryLoadAsync("slot-1").GetAwaiter().GetResult();
 
+                Assert.That(loadResult.Status, Is.EqualTo(UnifiedLoadStatus.Loaded));
                 Assert.That(restoredGameplay.State, Is.EqualTo("level:1"));
                 Assert.That(restoredNarrative.State, Is.EqualTo("choice:accept"));
                 Assert.That(restoredSettings.State, Is.EqualTo("language:en"));
                 Assert.That(restoredCommands.State, Is.EqualTo("mission:grant-key"));
+            }
+            finally
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void FailedRestoreRollsBackPreviouslyMutatedContributors()
+        {
+            var directory = Path.Combine(Path.GetTempPath(), $"levity-unified-load-{Guid.NewGuid():N}");
+            try
+            {
+                var store = new FileUnifiedSaveStore(directory);
+                var first = new StateContributor("a-first", 1, "saved:first");
+                var second = new StateContributor("b-second", 1, "saved:second");
+                var save = new UnifiedSave(store, first, second);
+                save.SaveAsync("slot-1").GetAwaiter().GetResult();
+
+                first.State = "current:first";
+                second.State = "current:second";
+                second.FailRestoreState = "saved:second";
+
+                var result = save.TryLoadAsync("slot-1").GetAwaiter().GetResult();
+                Assert.That(result.Status, Is.EqualTo(UnifiedLoadStatus.FailedRolledBack));
+                Assert.That(first.State, Is.EqualTo("current:first"));
+                Assert.That(second.State, Is.EqualTo("current:second"));
+            }
+            finally
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void RollbackFailureIsCallerVisibleAndOtherContributorsStillRollBack()
+        {
+            var directory = Path.Combine(Path.GetTempPath(), $"levity-unified-rollback-{Guid.NewGuid():N}");
+            try
+            {
+                var store = new FileUnifiedSaveStore(directory);
+                var first = new StateContributor("a-first", 1, "saved:first");
+                var second = new StateContributor("b-second", 1, "saved:second");
+                var save = new UnifiedSave(store, first, second);
+                save.SaveAsync("slot-1").GetAwaiter().GetResult();
+
+                first.State = "current:first";
+                second.State = "current:second";
+                first.FailRestoreState = "current:first";
+                second.FailRestoreState = "saved:second";
+
+                var result = save.TryLoadAsync("slot-1").GetAwaiter().GetResult();
+                Assert.That(result.Status, Is.EqualTo(UnifiedLoadStatus.FailedRollback));
+                Assert.That(result.Failure, Is.Not.Null);
+                Assert.That(result.RollbackFailure, Is.Not.Null);
+                Assert.That(first.State, Is.EqualTo("saved:first"));
+                Assert.That(second.State, Is.EqualTo("current:second"));
             }
             finally
             {
@@ -66,6 +124,7 @@ namespace Levity.UnifiedSave.Tests
             public int Version { get; }
             public string State { get; set; }
             public bool FailCapture { get; set; }
+            public string FailRestoreState { get; set; }
 
             public Task<string> CaptureAsync(CancellationToken cancellationToken = default)
             {
@@ -78,6 +137,7 @@ namespace Levity.UnifiedSave.Tests
                 string state,
                 CancellationToken cancellationToken = default)
             {
+                if (state == FailRestoreState) throw new InvalidOperationException($"{Id} restore failed");
                 State = state;
                 return Task.CompletedTask;
             }

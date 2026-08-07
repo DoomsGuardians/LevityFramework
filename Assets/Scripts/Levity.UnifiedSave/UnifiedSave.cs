@@ -76,21 +76,123 @@ namespace Levity.UnifiedSave
 
         public async Task LoadAsync(string slotId, CancellationToken cancellationToken = default)
         {
-            var record = await store.ReadAsync(slotId, cancellationToken).ConfigureAwait(false);
-            var savedById = record.Contributions.ToDictionary(item => item.Id, StringComparer.Ordinal);
+            var result = await TryLoadAsync(slotId, cancellationToken).ConfigureAwait(false);
+            if (result.Status == UnifiedLoadStatus.Loaded) return;
+            var inner = result.RollbackFailure == null
+                ? result.Failure
+                : new AggregateException(result.Failure, result.RollbackFailure);
+            throw new UnifiedSaveException(result.Message, inner);
+        }
 
-            if (savedById.Count != contributors.Count || contributors.Keys.Any(id => !savedById.ContainsKey(id)))
-                throw new UnifiedSaveException("The save slot does not contain the complete contributor set.");
-
-            foreach (var contributor in contributors.Values.OrderBy(item => item.Id, StringComparer.Ordinal))
+        public async Task<UnifiedLoadResult> TryLoadAsync(
+            string slotId,
+            CancellationToken cancellationToken = default)
+        {
+            UnifiedSaveRecord record;
+            Dictionary<string, UnifiedSaveContribution> savedById;
+            var ordered = contributors.Values.OrderBy(item => item.Id, StringComparer.Ordinal).ToArray();
+            var currentById = new Dictionary<string, UnifiedSaveContribution>(StringComparer.Ordinal);
+            try
             {
-                var contribution = savedById[contributor.Id];
-                await contributor.RestoreAsync(
-                    contribution.Version,
-                    contribution.State,
-                    cancellationToken).ConfigureAwait(false);
+                record = await store.ReadAsync(slotId, cancellationToken).ConfigureAwait(false);
+                savedById = record.Contributions.ToDictionary(item => item.Id, StringComparer.Ordinal);
+                if (savedById.Count != contributors.Count || contributors.Keys.Any(id => !savedById.ContainsKey(id)))
+                    throw new UnifiedSaveException("The save slot does not contain the complete contributor set.");
+
+                foreach (var contributor in ordered)
+                {
+                    currentById.Add(contributor.Id, new UnifiedSaveContribution(
+                        contributor.Id,
+                        contributor.Version,
+                        await contributor.CaptureAsync(cancellationToken).ConfigureAwait(false)));
+                }
+            }
+            catch (Exception exception) when (!(exception is OperationCanceledException))
+            {
+                return UnifiedLoadResult.FailedBeforeRestore(exception);
+            }
+
+            var attempted = new List<IUnifiedSaveContributor>(ordered.Length);
+            try
+            {
+                foreach (var contributor in ordered)
+                {
+                    attempted.Add(contributor);
+                    var contribution = savedById[contributor.Id];
+                    await contributor.RestoreAsync(
+                        contribution.Version,
+                        contribution.State,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                return UnifiedLoadResult.Loaded();
+            }
+            catch (Exception restoreFailure) when (!(restoreFailure is OperationCanceledException))
+            {
+                var rollbackFailures = new List<Exception>();
+                for (var index = attempted.Count - 1; index >= 0; index--)
+                {
+                    var contributor = attempted[index];
+                    var current = currentById[contributor.Id];
+                    try
+                    {
+                        await contributor.RestoreAsync(
+                            current.Version,
+                            current.State,
+                            CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception rollbackFailure)
+                    {
+                        rollbackFailures.Add(rollbackFailure);
+                    }
+                }
+                return rollbackFailures.Count == 0
+                    ? UnifiedLoadResult.FailedRolledBack(restoreFailure)
+                    : UnifiedLoadResult.FailedRollback(
+                        restoreFailure,
+                        new AggregateException("One or more contributors failed to roll back.", rollbackFailures));
             }
         }
+    }
+
+    public enum UnifiedLoadStatus
+    {
+        Loaded,
+        FailedBeforeRestore,
+        FailedRolledBack,
+        FailedRollback
+    }
+
+    public readonly struct UnifiedLoadResult
+    {
+        private UnifiedLoadResult(
+            UnifiedLoadStatus status,
+            string message,
+            Exception failure,
+            Exception rollbackFailure)
+        {
+            Status = status;
+            Message = message;
+            Failure = failure;
+            RollbackFailure = rollbackFailure;
+        }
+
+        public UnifiedLoadStatus Status { get; }
+        public string Message { get; }
+        public Exception Failure { get; }
+        public Exception RollbackFailure { get; }
+
+        public static UnifiedLoadResult Loaded() =>
+            new UnifiedLoadResult(UnifiedLoadStatus.Loaded, null, null, null);
+        public static UnifiedLoadResult FailedBeforeRestore(Exception failure) =>
+            new UnifiedLoadResult(UnifiedLoadStatus.FailedBeforeRestore,
+                "Unified Save failed before restore began.", failure, null);
+        public static UnifiedLoadResult FailedRolledBack(Exception failure) =>
+            new UnifiedLoadResult(UnifiedLoadStatus.FailedRolledBack,
+                "Unified Save restore failed and prior state was restored.", failure, null);
+        public static UnifiedLoadResult FailedRollback(Exception failure, Exception rollbackFailure) =>
+            new UnifiedLoadResult(UnifiedLoadStatus.FailedRollback,
+                "Unified Save restore failed and prior state could not be fully restored.",
+                failure, rollbackFailure);
     }
 
     public sealed class UnifiedSaveException : InvalidOperationException
