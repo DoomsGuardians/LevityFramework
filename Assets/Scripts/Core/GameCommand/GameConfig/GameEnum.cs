@@ -2,18 +2,6 @@
 // 核心指令模块 - GameEnum 通用枚举定义
 
 /// <summary>
-/// 游戏模式枚举（可根据项目扩展）
-/// </summary>
-public enum GameMode
-{
-    Null,
-    GameStart,
-    GamePlay,
-    Training,
-    Narrative
-}
-
-/// <summary>
 /// 游戏角色类型枚举（可根据项目扩展）
 /// </summary>
 public enum GameRole
