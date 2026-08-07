@@ -34,12 +34,6 @@ public class WindowBase : WindowBehaviour
     public UILayer uiLayer = UILayer.Normal;
 
     /// <summary>
-    /// 旧版层级（已弃用，请使用 uiLayer）
-    /// </summary>
-    [System.Obsolete("请使用 uiLayer 属性")]
-    public WindowLayer windowLayer;
-
-    /// <summary>
     /// 是否为全屏窗口
     /// 全屏窗口打开时会自动隐藏下层 UI 以减少 DrawCall
     /// </summary>

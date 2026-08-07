@@ -52,30 +52,6 @@ public class DataService : ILogic
     // ── Provider 注册接口 ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// 注册存档 Provider。每个 key 唯一；重复注册会覆盖旧 Provider。
-    /// 在 DataService.SaveToSlot 时，<paramref name="onSave"/> 会被调用，
-    /// 可将自定义数据写入 <see cref="GameSaveData"/>，也可以触发外部存档（如 Naninovel SaveGame）。
-    /// </summary>
-    [Obsolete("Use AddUnifiedSaveContributor(IUnifiedSaveContributor). String-key providers cannot participate in atomic saves.")]
-    public void AddSaveProvider(string key, Action<GameSaveData> onSave)
-    {
-        throw new NotSupportedException(
-            "String-key save providers are not atomic. Implement IUnifiedSaveContributor and call AddUnifiedSaveContributor instead.");
-    }
-
-    /// <summary>
-    /// 注册加载 Provider。每个 key 唯一；重复注册会覆盖旧 Provider。
-    /// 在 DataService.LoadFromSlot 时，<paramref name="onLoad"/> 会被 await，
-    /// 可从 <see cref="GameSaveData"/> 恢复数据，也可触发外部加载（如 Naninovel LoadGame）。
-    /// </summary>
-    [Obsolete("Use AddUnifiedSaveContributor(IUnifiedSaveContributor). String-key providers cannot participate in atomic loads.")]
-    public void AddLoadProvider(string key, Func<GameSaveData, Task> onLoad)
-    {
-        throw new NotSupportedException(
-            "String-key load providers are not atomic. Implement IUnifiedSaveContributor and call AddUnifiedSaveContributor instead.");
-    }
-
-    /// <summary>
     /// 注册删除 Provider。在 <see cref="DeleteSlot"/> 时一并删除子系统的存档文件。
     /// </summary>
     public void AddDeleteProvider(string key, Action<int> onDelete)
@@ -84,9 +60,9 @@ public class DataService : ILogic
     }
 
     /// <summary>
-    /// 移除 Provider（三类同时移除）。
+    /// 移除删除 Provider。
     /// </summary>
-    public void RemoveProvider(string key)
+    public void RemoveDeleteProvider(string key)
     {
         deleteProviders.Remove(key);
     }
@@ -375,52 +351,9 @@ public readonly struct SaveSlotResult
             result.ContributorId,
             result.Message,
             result.Failure);
-    [Obsolete("Use Failed(UnifiedSaveResult) to preserve the stable failure category and diagnostic context.")]
-    public static SaveSlotResult Failed(Exception exception) =>
-        new SaveSlotResult(
-            SaveSlotStatus.Failed,
-            null,
-            UnifiedSaveFailureCode.None,
-            null,
-            null,
-            exception?.Message,
-            exception ?? throw new ArgumentNullException(nameof(exception)));
 }
 
 // ── 数据模型 ───────────────────────────────────────────────────────────────────
-
-/// <summary>
-/// 多槽位存档容器，传递给各 Provider。
-/// </summary>
-[Serializable]
-public class GameSaveData
-{
-    public int slotId;
-    public GameData gameData;
-
-    // Provider 扩展数据（key = provider key, value = 序列化 JSON 字符串）
-    public List<ProviderData> providerExtras = new List<ProviderData>();
-
-    public string GetExtra(string key)
-    {
-        var item = providerExtras.Find(p => p.key == key);
-        return item?.value;
-    }
-
-    public void SetExtra(string key, string value)
-    {
-        var item = providerExtras.Find(p => p.key == key);
-        if (item != null) item.value = value;
-        else providerExtras.Add(new ProviderData { key = key, value = value });
-    }
-
-    [Serializable]
-    public class ProviderData
-    {
-        public string key;
-        public string value;
-    }
-}
 
 /// <summary>
 /// 游戏核心数据模型（可根据项目扩展）。

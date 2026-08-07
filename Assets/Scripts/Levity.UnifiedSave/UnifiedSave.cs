@@ -40,14 +40,6 @@ namespace Levity.UnifiedSave
             this.contributors = byId;
         }
 
-        [Obsolete("Use TrySaveAsync to receive caller-visible typed failures.")]
-        public async Task SaveAsync(string slotId, CancellationToken cancellationToken = default)
-        {
-            var result = await TrySaveAsync(slotId, cancellationToken);
-            if (result.Status == UnifiedSaveStatus.Saved) return;
-            throw new UnifiedSaveException(result.Message, result.Failure);
-        }
-
         public async Task<UnifiedSaveResult> TrySaveAsync(
             string slotId,
             CancellationToken cancellationToken = default)

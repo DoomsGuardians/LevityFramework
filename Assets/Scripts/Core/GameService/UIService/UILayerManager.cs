@@ -212,24 +212,6 @@ public class UILayerManager
     }
 
     /// <summary>
-    /// 从旧版 WindowLayer 转换到新版 UILayer
-    /// </summary>
-    /// <param name="windowLayer">旧版层级</param>
-    /// <returns>新版层级</returns>
-#pragma warning disable CS0618 // 忽略过时警告
-    public static UILayer ConvertFromWindowLayer(WindowLayer windowLayer)
-    {
-        return windowLayer switch
-        {
-            WindowLayer.Base => UILayer.Normal,
-            WindowLayer.Pop => UILayer.Top,
-            WindowLayer.Top => UILayer.Tip,
-            _ => UILayer.Normal
-        };
-    }
-#pragma warning restore CS0618
-
-    /// <summary>
     /// 清理所有层级
     /// </summary>
     public void Cleanup()

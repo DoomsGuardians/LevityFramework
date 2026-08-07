@@ -39,18 +39,6 @@ public enum UILayer
 }
 
 /// <summary>
-/// UI 窗口层级（旧版，保留向后兼容）
-/// </summary>
-[System.Obsolete("请使用 UILayer 枚举，提供更细粒度的分层控制")]
-public enum WindowLayer
-{
-    Null,
-    Base,   // -> UILayer.Normal
-    Pop,    // -> UILayer.Top
-    Top     // -> UILayer.Tip
-}
-
-/// <summary>
 /// 音频类型
 /// </summary>
 public enum AudioType
