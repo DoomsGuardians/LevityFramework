@@ -14,6 +14,12 @@ namespace Levity.Narrative.Core
             CancellationToken cancellationToken = default);
     }
 
+    /// <summary>Reports whether a Narrative Backend maps a stable Sequence ID.</summary>
+    public interface INarrativeSequenceMapping
+    {
+        bool Contains(NarrativeSequenceId sequenceId);
+    }
+
     /// <summary>Captures and restores an opaque backend-owned narrative position or choice state.</summary>
     public interface INarrativeCheckpointStore
     {

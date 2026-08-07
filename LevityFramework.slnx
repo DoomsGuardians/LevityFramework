@@ -28,5 +28,7 @@
   <Project Path="Levity.Narrative.Placeholder.csproj" />
   <Project Path="Levity.Stage.Workspace.csproj" />
   <Project Path="Levity.Stage.Workspace.Tests.csproj" />
+  <Project Path="Levity.Narrative.Integration.csproj" />
+  <Project Path="Levity.Narrative.Integration.Tests.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
 </Solution>

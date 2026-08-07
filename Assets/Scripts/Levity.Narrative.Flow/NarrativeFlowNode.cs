@@ -18,6 +18,8 @@ namespace Levity.Narrative.Flow
 
         private NarrativeFlowNode(NarrativeSequenceId sequenceId) => this.sequenceId = sequenceId;
 
+        public NarrativeSequenceId SequenceId => sequenceId;
+
         public static NarrativeFlowNode<TOutcome> Create(NarrativeSequenceId sequenceId) =>
             new NarrativeFlowNode<TOutcome>(sequenceId);
 

@@ -6,7 +6,7 @@ using Levity.Narrative.Core;
 namespace Levity.Narrative.Naninovel
 {
     /// <summary>Adapts a Naninovel player extension to Levity's backend-neutral narrative contract.</summary>
-    public sealed class NaninovelNarrativeBackend : INarrativeModule
+    public sealed class NaninovelNarrativeBackend : INarrativeModule, INarrativeSequenceMapping
     {
         private readonly NarrativeSequenceRegistry registry;
         private readonly INaninovelPlayer player;
@@ -18,6 +18,9 @@ namespace Levity.Narrative.Naninovel
         }
 
         public SaveAvailability SaveAvailability => player.SaveAvailability;
+
+        public bool Contains(NarrativeSequenceId sequenceId) =>
+            registry.TryResolve(sequenceId, out _);
 
         public async Task<NarrativeSessionResult<TOutcome>> PlayAsync<TOutcome>(
             NarrativeRequest request,

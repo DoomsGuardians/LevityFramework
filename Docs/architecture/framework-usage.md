@@ -47,7 +47,7 @@ The existence of source code does not imply production support. FSM, pooling, Ro
 | Unified Save | **Core** | Versioned contributors commit gameplay and narrative state through a durable candidate and atomic slot replacement. Save and load return typed results; failed capture, restore, or replacement preserves or rolls back to the prior valid state. |
 | Narrative Core and Flow tracer bullet | **Core** | Backend-neutral sessions, stable Sequence IDs, typed terminal results, Flow routing, and committed Gameplay Command identities are covered without requiring Naninovel. |
 | Naninovel adapter | **Supported Module** | A real `.nani` choice, typed outcome, save blocking, and play/save/load/no-repeat path run through the production `GameRoot`. Remaining adapter ownership and concurrency hardening are tracked separately. |
-| Narrative Editor tooling and independent workspaces | **Incremental** | Narrative and Stage Workspaces are supported through pure C# runners and editor entries. Validation, navigation, and Integration Workspace remain planned work. |
+| Narrative Editor tooling and independent workspaces | **Supported Module** | Narrative, Stage, and Integration Workspaces have pure C# runners, editor entries, typed-outcome tests, and explicit backend-mapping validation. Broader editor validation and navigation remain planned work. |
 | Setup presets, runtime-state coordination, input, UI, resources, audio, and diagnostics | **Target** | These sections remain architectural direction until each capability receives its own public behavior tests and maturity review. |
 
 ## Composition and Lifecycle

@@ -30,6 +30,7 @@
 | `Levity.Narrative.Flow` tracer bullet | **Core** | 等待 typed outcome、执行 game-owned branch，并保存已提交 Gameplay Command execution ID，避免恢复后重复副作用。 |
 | `Levity.Narrative.Workspace` | **Supported Module** | 在不加载正式 Stage、Flow 或 Naninovel 的情况下枚举并播放叙事分支；入口见 [`Docs/workspaces/narrative-workspace.md`](Docs/workspaces/narrative-workspace.md)。 |
 | `Levity.Narrative.Placeholder` / `Levity.Stage.Workspace` | **Supported Module** | 通过事务式 Stage 路径加载任意注册关卡，并用运行时可选的 typed outcome 驱动 Flow；入口见 [`Docs/workspaces/stage-workspace.md`](Docs/workspaces/stage-workspace.md)。 |
+| `Levity.Narrative.Integration` | **Supported Module** | 同一份 Sequence ID 与 Flow 数据可在 Placeholder/Naninovel 后端间切换，并在播放前验证 mapping；入口见 [`Docs/workspaces/integration-workspace.md`](Docs/workspaces/integration-workspace.md)。 |
 | `Levity.UnifiedSave` | **Core** | versioned contributors 共同提交一个 slot；candidate 写入或 contributor 失败时保留上一个有效存档。 |
 | `Levity.Composition` | **Core** | 显式注册模块并执行确定性的 Initialize、Start 与逆序 Shutdown；新模块优先使用。 |
 | `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
@@ -112,6 +113,9 @@ Assets/Scripts/Levity.Narrative.Placeholder/
 
 Assets/Scripts/Levity.Stage.Workspace/
 └── StageWorkspace.cs        # 事务式 Stage commit 后运行 Placeholder-backed Flow
+
+Assets/Scripts/Levity.Narrative.Integration/
+└── IntegrationWorkspace.cs  # 不改写 Flow 数据的 backend 切换与 mapping 验证
 
 Assets/Scripts/Core/
 ├── GameCommand/              # 核心指令模块

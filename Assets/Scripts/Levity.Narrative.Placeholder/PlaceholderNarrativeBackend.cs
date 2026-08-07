@@ -10,7 +10,7 @@ namespace Levity.Narrative.Placeholder
     /// <summary>
     /// Production authoring backend that advertises typed outcomes and waits for an operator selection.
     /// </summary>
-    public sealed class PlaceholderNarrativeBackend : INarrativeModule
+    public sealed class PlaceholderNarrativeBackend : INarrativeModule, INarrativeSequenceMapping
     {
         private readonly object sync = new object();
         private readonly FakeNarrativeBackend backend = new FakeNarrativeBackend();
@@ -69,6 +69,11 @@ namespace Levity.Narrative.Placeholder
             NarrativeRequest request,
             CancellationToken cancellationToken = default) =>
             backend.PlayAsync<TOutcome>(request, cancellationToken);
+
+        public bool Contains(NarrativeSequenceId sequenceId)
+        {
+            lock (sync) return sequences.ContainsKey(sequenceId);
+        }
 
         public void SelectOutcome(object outcome)
         {
