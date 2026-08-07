@@ -1,0 +1,16 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc1515ab76e54f068e2f2207940fab32, type: 3}
+  m_Name: UI-Cancel
+  m_EditorClassIdentifier:
+  m_Asset: {fileID: -944628639613478452, guid: c71b94b8568c4f0f878f7fba775d6d7b, type: 3}
+  m_ActionId: acbe1cc7-b383-4df6-ad56-4a377959c8bf

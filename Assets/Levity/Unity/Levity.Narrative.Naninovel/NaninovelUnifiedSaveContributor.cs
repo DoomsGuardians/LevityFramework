@@ -50,7 +50,7 @@ namespace Levity.Narrative.Naninovel
 
         private static async Task EnsureInitializedAsync()
         {
-            if (!Engine.Initialized) await RuntimeInitializer.Initialize();
+            await NaninovelRuntimePlayer.EnsureInitializedAsync();
         }
     }
 }

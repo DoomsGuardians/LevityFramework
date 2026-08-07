@@ -100,75 +100,37 @@ GameRoot (单例服务定位器)
 ## 目录结构
 
 ```
-Assets/Scripts/Levity.Narrative.Core/
+Assets/Levity/Runtime/Levity.Narrative.Core/
 ├── NarrativeContracts.cs    # 后端中立的叙事会话、结果、并发与保存许可契约
 └── FakeNarrativeBackend.cs  # EditMode 测试与 Placeholder Backend 共用实现
 
-Assets/Scripts/Levity.Narrative.Workspace/
+Assets/Levity/Runtime/Levity.Narrative.Workspace/
 ├── NarrativeWorkspace.cs    # 无 Stage/Flow 资产的序列目录、分支选择与运行入口
 └── FakeWorkspaceState.cs    # 可检查的假游戏状态、带类型命令及调用日志
 
-Assets/Scripts/Levity.Narrative.Placeholder/
+Assets/Levity/Runtime/Levity.Narrative.Placeholder/
 └── PlaceholderNarrativeBackend.cs # 列出 typed outcomes 并等待 operator 选择的生产后端
 
-Assets/Scripts/Levity.Stage.Workspace/
+Assets/Levity/Runtime/Levity.Stage.Workspace/
 └── StageWorkspace.cs        # 事务式 Stage commit 后运行 Placeholder-backed Flow
 
-Assets/Scripts/Levity.Narrative.Integration/
+Assets/Levity/Runtime/Levity.Narrative.Integration/
 └── IntegrationWorkspace.cs  # 不改写 Flow 数据的 backend 切换与 mapping 验证
 
-Assets/Scripts/Core/
-├── GameCommand/              # 核心指令模块
-│   ├── Interface/            # 接口定义
-│   │   ├── ILogic.cs         # 服务/系统生命周期接口
-│   │   └── IMonoLogic.cs     # MonoBehaviour 生命周期接口
-│   │
-│   ├── GameTool/             # 工具类
-│   │   ├── Singleton/        # 单例模式
-│   │   ├── BindableProperty/ # 可观察属性
-│   │   └── ToolFunction/     # 工具函数
-│   │
-│   ├── GameConfig/           # 配置和枚举
-│   │   └── GameEnum.cs       # 通用枚举定义
-│   │
-│   ├── GameMode/             # 游戏模式
-│   │   └── GameModeBase.cs   # 游戏模式基类
-│   │
-│   ├── Manager/              # 管理器
-│   │   └── ManagerBase.cs    # 管理器基类
-│   │
-│   ├── Window/               # UI 窗口
-│   │   ├── WindowBase.cs     # 窗口基类
-│   │   ├── WindowBehaviour.cs
-│   │   └── UIListener.cs     # UI 事件监听器
-│   │
-│   └── GameRoot.cs           # 游戏根节点（单例）
-│
-├── GameService/              # 服务层
-│   ├── EventService/         # 事件服务
-│   ├── TimerService/         # 定时器服务
-│   ├── UIService/            # UI 服务
-│   ├── ResService/           # 资源服务
-│   ├── AudioService/         # 音频服务
-│   ├── DataService/          # 数据存档服务
-│   ├── InputService/         # 输入服务与输入通道路由
-│   ├── NaninovelService/     # 当前 Naninovel 集成
-│   └── ManagerService.cs     # Manager 管理服务
-│
-├── GameSystem/               # 系统层
-│   ├── RoleSystem/           # 角色系统
-│   ├── StageSystem/          # 关卡系统
-│   └── MonoItemSystem/       # 场景物件系统
-│
-├── Interaction/              # 交互模块
-│   └── FSM/                  # 状态机
-│       ├── IState.cs
-│       └── StateMachineBase.cs
-│
-└── Utils/                    # 工具扩展
-    ├── LogExtensions.cs      # 日志扩展
-    ├── DOTweenExtensions.cs  # DOTween 扩展
-    └── UnityExtensions.cs    # Unity 扩展方法
+Assets/Levity/Unity/Application/
+├── Interface/                # 服务/系统生命周期接口
+├── GameConfig/               # 配置和枚举
+├── GameMode/                 # 游戏模式
+├── Manager/                  # Manager 基类
+├── Window/                   # UI 窗口
+└── GameRoot.cs               # 游戏根节点与 composition root
+
+Assets/Levity/Unity/Services/ # Event、Timer、UI、Resource、Audio、Data、Input、Manager
+Assets/Levity/Unity/Systems/  # Role、Stage 与 MonoItem 系统
+Assets/Levity/Runtime/Interaction/FSM/ # 可复用状态机
+Assets/Levity/Unity/Utilities/         # Unity 与 DOTween 扩展
+Assets/Levity/Tests/                    # EditMode / PlayMode 测试程序集
+Assets/Levity/Editor/                   # Workspace 与项目配置工具
 ```
 
 ---

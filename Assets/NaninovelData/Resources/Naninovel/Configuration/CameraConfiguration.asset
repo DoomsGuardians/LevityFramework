@@ -17,7 +17,7 @@ MonoBehaviour:
   MatchScreenWidth: 0
   InitialPosition: {x: 0, y: 0, z: -10}
   CustomCameraPrefab: {fileID: 0}
-  UseUICamera: 1
+  UseUICamera: 0
   CustomUICameraPrefab: {fileID: 0}
   DefaultDuration: 0.35
   DefaultEasing: 0

@@ -11,6 +11,7 @@
 - [`workspaces/narrative-workspace.md`](workspaces/narrative-workspace.md)：不加载正式 Stage、Flow 或 Naninovel 的叙事创作工作区入口。
 - [`workspaces/stage-workspace.md`](workspaces/stage-workspace.md)：通过事务式 Stage 加载与 Placeholder Narrative Outcomes 独立运行关卡流程。
 - [`workspaces/integration-workspace.md`](workspaces/integration-workspace.md)：用同一 Sequence ID 和 Flow 数据切换 Placeholder/Naninovel 后端。
+- [`setup/narrative-action-baseline.md`](setup/narrative-action-baseline.md)：当前项目的可重复配置入口、资产所有权和 preset 对比基线。
 
 当前实现仍保留 `GameRoot`、`Services` 服务定位器、枚举标识和 `Resources` 作为兼容入口。Narrative Core、稳定 Sequence registry、可选 Runtime composition seam、Naninovel adapter 和 Flow tracer bullet 已落地；安装 Naninovel 时，正式 runtime player 与统一存档 contributor 会自动组成进 `GameRoot`，卸载该包则 adapter 退出编译。`Levity.UnifiedSave` 通过 versioned contributors、同目录 candidate 写入和原子 slot 替换统一 gameplay 与 narrative 状态，失败保存保留上一个有效 slot；`DataService` 已切换到该事务。`Levity.Composition` 提供确定性生命周期。若文档与源码冲突，当前源码和测试是实现事实；其余架构文档仍是迁移目标。
 

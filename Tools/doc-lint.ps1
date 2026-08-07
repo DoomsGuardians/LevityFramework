@@ -7,7 +7,7 @@ $markdownFiles = @((Join-Path $repoRoot 'README.md')) + @(
         Select-Object -ExpandProperty FullName
 )
 $sourceFiles = @(
-    Get-ChildItem (Join-Path (Join-Path $repoRoot 'Assets') 'Scripts') -Recurse -Filter '*.cs' -File |
+    Get-ChildItem (Join-Path (Join-Path $repoRoot 'Assets') 'Levity') -Recurse -Filter '*.cs' -File |
         Sort-Object FullName |
         Select-Object -ExpandProperty FullName
 )
