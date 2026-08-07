@@ -28,6 +28,7 @@
 | `Levity.Narrative.Core` 契约与 Fake Backend | **Core** | 后端中立的 Narrative Session 公共边界；可直接依赖。 |
 | `Levity.Narrative.Naninovel` registry 与 adapter | **Core** | 用稳定 Sequence ID 映射 `.nani` script/label；Naninovel 包通过显式播放端口保持隔离。 |
 | `Levity.Narrative.Flow` tracer bullet | **Core** | 等待 typed outcome、执行 game-owned branch，并保存已提交 Gameplay Command execution ID，避免恢复后重复副作用。 |
+| `Levity.Narrative.Workspace` | **Supported Module** | 在不加载正式 Stage、Flow 或 Naninovel 的情况下枚举并播放叙事分支；入口见 [`Docs/workspaces/narrative-workspace.md`](Docs/workspaces/narrative-workspace.md)。 |
 | `Levity.UnifiedSave` | **Core** | versioned contributors 共同提交一个 slot；candidate 写入或 contributor 失败时保留上一个有效存档。 |
 | `Levity.Composition` | **Core** | 显式注册模块并执行确定性的 Initialize、Start 与逆序 Shutdown；新模块优先使用。 |
 | `StageSystem` | **Experimental** | 当前可运行，但异步事务、失败恢复和强类型 Stage ID 尚未落地。 |
@@ -41,7 +42,6 @@
 | `MonoSingleton<T>` | **Deprecated** | 为 `GameRoot` 等旧入口保留；不要新增基于它的全局服务。 |
 | `PersistentSingleton<T>` | **Deprecated** | 自动创建和 `DontDestroyOnLoad` 会隐藏生命周期；仅兼容旧调用。 |
 | `UILayer` / `UILayerManager` | **Core** | 当前 UI 分层模型；新窗口使用 `UILayer`。 |
-| `WindowLayer` | **Deprecated** | 旧三层枚举，仅由兼容转换使用；新代码改用 `UILayer`。 |
 | Command ScriptableObjects | **Experimental** | 现有加载场景效果可用，但尚未形成稳定的公共命令契约。 |
 
 ### 已知未消费的 Stage 配置
@@ -101,6 +101,10 @@ GameRoot (单例服务定位器)
 Assets/Scripts/Levity.Narrative.Core/
 ├── NarrativeContracts.cs    # 后端中立的叙事会话、结果、并发与保存许可契约
 └── FakeNarrativeBackend.cs  # EditMode 测试与 Placeholder Backend 共用实现
+
+Assets/Scripts/Levity.Narrative.Workspace/
+├── NarrativeWorkspace.cs    # 无 Stage/Flow 资产的序列目录、分支选择与运行入口
+└── FakeWorkspaceState.cs    # 可检查的假游戏状态、带类型命令及调用日志
 
 Assets/Scripts/Core/
 ├── GameCommand/              # 核心指令模块

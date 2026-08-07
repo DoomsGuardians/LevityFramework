@@ -8,6 +8,7 @@
 
 - [`../README.md`](../README.md)：面向使用者的当前代码概览、核心 API 与扩展方式。
 - [`../CONTEXT.md`](../CONTEXT.md)：领域术语及统一用语。
+- [`workspaces/narrative-workspace.md`](workspaces/narrative-workspace.md)：不加载正式 Stage、Flow 或 Naninovel 的叙事创作工作区入口。
 
 当前实现仍保留 `GameRoot`、`Services` 服务定位器、枚举标识和 `Resources` 作为兼容入口。Narrative Core、稳定 Sequence registry、可选 Runtime composition seam、Naninovel adapter 和 Flow tracer bullet 已落地；安装 Naninovel 时，正式 runtime player 与统一存档 contributor 会自动组成进 `GameRoot`，卸载该包则 adapter 退出编译。`Levity.UnifiedSave` 通过 versioned contributors、同目录 candidate 写入和原子 slot 替换统一 gameplay 与 narrative 状态，失败保存保留上一个有效 slot；`DataService` 已切换到该事务。`Levity.Composition` 提供确定性生命周期。若文档与源码冲突，当前源码和测试是实现事实；其余架构文档仍是迁移目标。
 
@@ -17,7 +18,7 @@
 - [`architecture/narrative-module.md`](architecture/narrative-module.md)：叙事模块及 Naninovel 适配边界的目标架构。
 - [`adr/0001-own-narrative-contracts-and-adapt-naninovel.md`](adr/0001-own-narrative-contracts-and-adapt-naninovel.md)：叙事契约归 Levity、Naninovel 作为默认后端的已接受决策。
 
-这些设计中的 Narrative Core、Narrative Sequence 强类型 ID、Naninovel registry/兼容 adapter、首个 Narrative Flow tracer bullet、原子 Unified Save 和基础 Composition 生命周期已经落地；Narrative Editor 及其他强类型 ID 尚未在当前代码中完整落地。
+这些设计中的 Narrative Core、Narrative Sequence 强类型 ID、Naninovel registry/兼容 adapter、首个 Narrative Flow tracer bullet、Narrative Workspace Slice A、原子 Unified Save 和基础 Composition 生命周期已经落地；其他 Narrative Editor 工具及其他强类型 ID 尚未在当前代码中完整落地。
 
 ## 规格与任务
 

@@ -1,0 +1,14 @@
+{
+    "name": "Levity.Narrative.Workspace",
+    "rootNamespace": "Levity.Narrative.Workspace",
+    "references": ["Levity.Narrative.Core"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}
