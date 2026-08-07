@@ -4,7 +4,7 @@
 
 Accepted design, 2026-08-06.
 
-Implementation status: target architecture under migration. `Levity.Narrative.Core` now provides the backend-neutral runtime contract and a tested fake backend in a no-engine-reference assembly. The current application still exposes a direct `NaninovelService`; Flow/Adapter/Editor and application composition are not yet implemented.
+Implementation status: target architecture under migration. Narrative Core, the Flow tracer bullet, the Naninovel runtime adapter, transactional unified load, save-availability enforcement, and application composition are implemented. Narrative Editor tooling and the remaining production migrations are not yet implemented.
 
 This document is the architectural authority for integrating narrative and presentation into Levity Framework. The superseded Naninovel integration roadmap has been removed; requirements and implementation status are tracked in GitHub Issues.
 
@@ -75,7 +75,7 @@ A sequence registry maps stable sequence IDs to backend-specific scripts and ent
 
 ## Flow Integration
 
-The primary Flow node plays one narrative sequence and waits for its result. It does not reproduce individual dialogue, choice, or presentation commands. The node exposes validated inputs and typed result branches.
+The primary Flow node plays one narrative sequence and waits for its result. It does not reproduce individual dialogue, choice, or presentation commands. Completed outcomes select their typed gameplay branches; cancellation selects the configured cancellation branch; failures select a failure-code branch before the generic failure fallback. The returned Flow result preserves terminal status, typed outcome or failure, and the selected branch. An unconfigured terminal route is a Flow configuration error.
 
 At scene transitions, Flow explicitly selects one of:
 

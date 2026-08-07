@@ -11,6 +11,10 @@ namespace Levity.Narrative.Flow
     {
         private readonly NarrativeSequenceId sequenceId;
         private readonly Dictionary<TOutcome, Branch> branches = new Dictionary<TOutcome, Branch>();
+        private readonly Dictionary<NarrativeFailureCode, string> failureBranches =
+            new Dictionary<NarrativeFailureCode, string>();
+        private string cancelledBranchId;
+        private string failureBranchId;
 
         private NarrativeFlowNode(NarrativeSequenceId sequenceId) => this.sequenceId = sequenceId;
 
@@ -29,6 +33,30 @@ namespace Levity.Narrative.Flow
             return this;
         }
 
+        public NarrativeFlowNode<TOutcome> OnCancelled(string branchId)
+        {
+            if (string.IsNullOrWhiteSpace(branchId))
+                throw new ArgumentException("A Flow branch ID cannot be empty.", nameof(branchId));
+            cancelledBranchId = branchId;
+            return this;
+        }
+
+        public NarrativeFlowNode<TOutcome> OnFailed(NarrativeFailureCode code, string branchId)
+        {
+            if (string.IsNullOrWhiteSpace(branchId))
+                throw new ArgumentException("A Flow branch ID cannot be empty.", nameof(branchId));
+            failureBranches[code] = branchId;
+            return this;
+        }
+
+        public NarrativeFlowNode<TOutcome> OnFailed(string branchId)
+        {
+            if (string.IsNullOrWhiteSpace(branchId))
+                throw new ArgumentException("A Flow branch ID cannot be empty.", nameof(branchId));
+            failureBranchId = branchId;
+            return this;
+        }
+
         public async Task<NarrativeFlowResult<TOutcome>> PlayAsync(
             INarrativeModule narrative,
             GameplayCommandExecutor commands,
@@ -39,6 +67,25 @@ namespace Levity.Narrative.Flow
 
             var result = await narrative.PlayAsync<TOutcome>(
                 new NarrativeRequest(sequenceId), cancellationToken).ConfigureAwait(false);
+            if (result.Status == NarrativeSessionStatus.Cancelled)
+            {
+                if (cancelledBranchId == null)
+                    throw new NarrativeFlowException(sequenceId, null, "The cancelled Narrative session has no Flow branch.");
+                return new NarrativeFlowResult<TOutcome>(
+                    NarrativeSessionStatus.Cancelled, default, null, cancelledBranchId);
+            }
+            if (result.Status == NarrativeSessionStatus.Failed &&
+                result.Failure != null &&
+                failureBranches.TryGetValue(result.Failure.Code, out var exactFailureBranchId))
+            {
+                return new NarrativeFlowResult<TOutcome>(
+                    NarrativeSessionStatus.Failed, default, result.Failure, exactFailureBranchId);
+            }
+            if (result.Status == NarrativeSessionStatus.Failed && failureBranchId != null)
+            {
+                return new NarrativeFlowResult<TOutcome>(
+                    NarrativeSessionStatus.Failed, default, result.Failure, failureBranchId);
+            }
             if (result.Status != NarrativeSessionStatus.Completed)
                 throw new NarrativeFlowException(sequenceId, result.Failure);
             if (!branches.TryGetValue(result.Outcome, out var branch))
@@ -66,12 +113,25 @@ namespace Levity.Narrative.Flow
     public readonly struct NarrativeFlowResult<TOutcome>
     {
         public NarrativeFlowResult(TOutcome outcome, string branchId)
+            : this(NarrativeSessionStatus.Completed, outcome, null, branchId)
         {
+        }
+
+        public NarrativeFlowResult(
+            NarrativeSessionStatus status,
+            TOutcome outcome,
+            NarrativeFailure failure,
+            string branchId)
+        {
+            Status = status;
             Outcome = outcome;
+            Failure = failure;
             BranchId = branchId;
         }
 
+        public NarrativeSessionStatus Status { get; }
         public TOutcome Outcome { get; }
+        public NarrativeFailure Failure { get; }
         public string BranchId { get; }
     }
 
