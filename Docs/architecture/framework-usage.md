@@ -4,7 +4,7 @@
 
 Accepted design, 2026-08-06.
 
-Implementation status: target architecture under migration. It is not an inventory of capabilities already present in `Assets/Scripts/Core`; see `Docs/README.md` and the root `README.md` for the current implementation.
+Implementation status: incremental architecture under migration. Composition and Unified Save are implemented Core capabilities; the remaining sections describe a mixture of implemented behavior and migration targets. See the maturity checklist below, `Docs/README.md`, and the root `README.md` for the current implementation boundary.
 
 This document defines how Levity Framework is installed, composed, extended, tested, and used to build games. The narrative subsystem is specified in `Docs/architecture/narrative-module.md`; that design remains authoritative for Naninovel-facing contracts.
 
@@ -38,6 +38,17 @@ Framework code is classified explicitly:
 - **Deprecated**: retained temporarily with a documented migration path.
 
 The existence of source code does not imply production support. FSM, pooling, RoleSystem, MonoItemSystem, command ScriptableObjects, singleton helpers, and generic utilities are reviewed and classified rather than deleted solely because they are unused. Utilities with duplicated responsibilities, global hidden ownership, or known correctness problems cannot remain Supported without repair and tests.
+
+### Current Maturity Checklist
+
+| Capability | Maturity | Evidence and remaining boundary |
+| --- | --- | --- |
+| Composition and deterministic lifecycle | **Core** | Public behavior tests cover dependency validation, ordered Initialize/Start, and reverse-order Shutdown. `GameRoot` retains an `ILogic` compatibility path while new modules use explicit composition. |
+| Unified Save | **Core** | Versioned contributors commit gameplay and narrative state through a durable candidate and atomic slot replacement. Save and load return typed results; failed capture, restore, or replacement preserves or rolls back to the prior valid state. |
+| Narrative Core and Flow tracer bullet | **Core** | Backend-neutral sessions, stable Sequence IDs, typed terminal results, Flow routing, and committed Gameplay Command identities are covered without requiring Naninovel. |
+| Naninovel adapter | **Supported Module** | A real `.nani` choice, typed outcome, save blocking, and play/save/load/no-repeat path run through the production `GameRoot`. Remaining adapter ownership and concurrency hardening are tracked separately. |
+| Narrative Editor tooling and independent workspaces | **Target** | Validation, navigation, Narrative Workspace, Stage Workspace, and Integration Workspace remain planned work. |
+| Setup presets, runtime-state coordination, input, UI, resources, audio, and diagnostics | **Target** | These sections remain architectural direction until each capability receives its own public behavior tests and maturity review. |
 
 ## Composition and Lifecycle
 
