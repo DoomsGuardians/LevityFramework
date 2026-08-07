@@ -1,0 +1,16 @@
+{
+    "name": "Levity.Stage.Unity",
+    "rootNamespace": "Levity.Stage.Unity",
+    "references": [
+        "Levity.Stage"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

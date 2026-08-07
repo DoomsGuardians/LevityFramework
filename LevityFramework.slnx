@@ -13,13 +13,15 @@
   <Project Path="Levity.Narrative.Naninovel.Tests.csproj" />
   <Project Path="Levity.Narrative.Core.Tests.csproj" />
   <Project Path="Levity.Narrative.Core.csproj" />
+  <Project Path="Levity.Stage.Unity.csproj" />
   <Project Path="Levity.Stage.Tests.csproj" />
   <Project Path="Levity.Composition.Tests.csproj" />
   <Project Path="Levity.Narrative.Flow.Tests.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Levity.UnifiedSave.csproj" />
-  <Project Path="Levity.Narrative.Runtime.csproj" />
+  <Project Path="Levity.Stage.Unity.Tests.csproj" />
   <Project Path="Levity.Stage.csproj" />
+  <Project Path="Levity.Narrative.Runtime.csproj" />
   <Project Path="Levity.Narrative.Naninovel.PlayModeTests.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
 </Solution>
