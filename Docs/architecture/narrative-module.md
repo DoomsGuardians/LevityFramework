@@ -71,7 +71,7 @@ Game code requests a sequence through a use-case-level narrative module interfac
 
 A session completes as `Completed`, `Cancelled`, or `Failed`, with an optional typed narrative outcome. Game Flow handles all three explicitly. Missing scripts, invalid parameters, backend initialization failures, and execution failures return a typed failure and produce detailed development diagnostics; they are never silently skipped.
 
-A sequence registry maps stable sequence IDs to backend-specific scripts and entry points. Moving a `.nani` asset therefore does not rewrite game-flow data. Input and outcome schemas allow editor validation while preserving backend-agnostic runtime contracts.
+A sequence registry maps stable sequence IDs to backend-specific scripts and entry points. Moving a `.nani` asset therefore does not rewrite game-flow data. Duplicate registration fails explicitly and preserves the original mapping; intentional changes use the separately named replacement API. Input and outcome schemas allow editor validation while preserving backend-agnostic runtime contracts.
 
 ## Flow Integration
 
@@ -100,7 +100,7 @@ Stateful command executions receive stable IDs. Levity records committed IDs wit
 
 ## Unified Save
 
-Levity initiates and commits the unified save. Gameplay systems and the Naninovel backend contribute versioned state; no contributor writes an independently successful partial save. The complete payload is validated, written to a temporary location, and atomically replaces the prior valid slot only after every contributor succeeds.
+Levity initiates and commits the unified save. Gameplay systems and the Naninovel backend contribute versioned state; no contributor writes an independently successful partial save. The complete payload is validated, written to a temporary location, and atomically replaces the prior valid slot only after every contributor succeeds. Save callers receive a typed result with a stable failure category, slot ID, optional contributor ID, diagnostic message, and original exception. The legacy throwing save method remains only as an obsolete compatibility wrapper.
 
 Naninovel 1.20.250922 saves a command-level playback position (`scriptPath`, `lineIndex`, and `inlineIndex`), executed/waiting state, choice state, and service state. Before saving, it completes active asynchronous commands. Consequently, ordinary dialogue and waiting choices can be restored meaningfully, but an in-progress cinematic is not an exact animation-frame snapshot.
 

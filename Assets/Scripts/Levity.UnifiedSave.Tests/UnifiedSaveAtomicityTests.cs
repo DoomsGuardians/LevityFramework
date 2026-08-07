@@ -9,6 +9,22 @@ namespace Levity.UnifiedSave.Tests
     public sealed class UnifiedSaveAtomicityTests
     {
         [Test]
+        public void StoreCommitFailureReturnsTypedDiagnosticResult()
+        {
+            var failure = new IOException("Disk is read-only.");
+            var save = new UnifiedSave(new FailingStore(failure));
+
+            var result = save.TrySaveAsync("slot-1").GetAwaiter().GetResult();
+
+            Assert.That(result.Status, Is.EqualTo(UnifiedSaveStatus.Failed));
+            Assert.That(result.FailureCode, Is.EqualTo(UnifiedSaveFailureCode.StoreCommitFailed));
+            Assert.That(result.SlotId, Is.EqualTo("slot-1"));
+            Assert.That(result.ContributorId, Is.Null);
+            Assert.That(result.Failure, Is.SameAs(failure));
+            Assert.That(result.Message, Does.Contain("slot-1"));
+        }
+
+        [Test]
         public void FailedContributorPreservesThePreviousCompleteSlot()
         {
             var directory = Path.Combine(Path.GetTempPath(), $"levity-unified-save-{Guid.NewGuid():N}");
@@ -20,15 +36,21 @@ namespace Levity.UnifiedSave.Tests
                 var settings = new StateContributor("settings", 1, "language:en");
                 var commands = new StateContributor("commands", 1, "mission:grant-key");
                 var save = new UnifiedSave(store, gameplay, narrative, settings, commands);
-                save.SaveAsync("slot-1").GetAwaiter().GetResult();
+                Assert.That(
+                    save.TrySaveAsync("slot-1").GetAwaiter().GetResult().Status,
+                    Is.EqualTo(UnifiedSaveStatus.Saved));
 
                 gameplay.State = "level:2";
                 narrative.State = "choice:decline";
                 settings.FailCapture = true;
                 commands.State = "mission:grant-key,mission:award";
 
-                Assert.Throws<UnifiedSaveException>(() =>
-                    save.SaveAsync("slot-1").GetAwaiter().GetResult());
+                var failedSave = save.TrySaveAsync("slot-1").GetAwaiter().GetResult();
+                Assert.That(failedSave.Status, Is.EqualTo(UnifiedSaveStatus.Failed));
+                Assert.That(
+                    failedSave.FailureCode,
+                    Is.EqualTo(UnifiedSaveFailureCode.ContributorCaptureFailed));
+                Assert.That(failedSave.ContributorId, Is.EqualTo("settings"));
 
                 var restoredGameplay = new StateContributor("gameplay", 1, null);
                 var restoredNarrative = new StateContributor("narrative", 2, null);
@@ -64,7 +86,9 @@ namespace Levity.UnifiedSave.Tests
                 var first = new StateContributor("a-first", 1, "saved:first");
                 var second = new StateContributor("b-second", 1, "saved:second");
                 var save = new UnifiedSave(store, first, second);
-                save.SaveAsync("slot-1").GetAwaiter().GetResult();
+                Assert.That(
+                    save.TrySaveAsync("slot-1").GetAwaiter().GetResult().Status,
+                    Is.EqualTo(UnifiedSaveStatus.Saved));
 
                 first.State = "current:first";
                 second.State = "current:second";
@@ -91,7 +115,9 @@ namespace Levity.UnifiedSave.Tests
                 var first = new StateContributor("a-first", 1, "saved:first");
                 var second = new StateContributor("b-second", 1, "saved:second");
                 var save = new UnifiedSave(store, first, second);
-                save.SaveAsync("slot-1").GetAwaiter().GetResult();
+                Assert.That(
+                    save.TrySaveAsync("slot-1").GetAwaiter().GetResult().Status,
+                    Is.EqualTo(UnifiedSaveStatus.Saved));
 
                 first.State = "current:first";
                 second.State = "current:second";
@@ -141,6 +167,24 @@ namespace Levity.UnifiedSave.Tests
                 State = state;
                 return Task.CompletedTask;
             }
+        }
+
+        private sealed class FailingStore : IUnifiedSaveStore
+        {
+            private readonly Exception failure;
+
+            public FailingStore(Exception failure) => this.failure = failure;
+
+            public Task ReplaceAsync(
+                string slotId,
+                UnifiedSaveRecord record,
+                CancellationToken cancellationToken = default) =>
+                Task.FromException(failure);
+
+            public Task<UnifiedSaveRecord> ReadAsync(
+                string slotId,
+                CancellationToken cancellationToken = default) =>
+                throw new NotSupportedException();
         }
     }
 }

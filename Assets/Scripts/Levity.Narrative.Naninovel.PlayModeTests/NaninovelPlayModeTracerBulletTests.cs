@@ -88,10 +88,11 @@ namespace Levity.Narrative.Naninovel.Tests
                 store,
                 new NaninovelUnifiedSaveContributor(),
                 new CommandContributor(commands));
-            var saving = save.SaveAsync("tracer");
+            var saving = save.TrySaveAsync("tracer");
             for (var frame = 0; frame < 600 && !saving.IsCompleted; frame++) yield return null;
             Assert.That(saving.IsCompleted, Is.True, "Unified Save capture did not complete.");
             Assert.That(saving.IsCompletedSuccessfully, Is.True);
+            Assert.That(saving.Result.Status, Is.EqualTo(UnifiedSaveStatus.Saved));
 
             Engine.Destroy();
             yield return null;
@@ -105,7 +106,10 @@ namespace Levity.Narrative.Naninovel.Tests
             var loading = restored.LoadAsync("tracer");
             for (var frame = 0; frame < 600 && !loading.IsCompleted; frame++) yield return null;
             Assert.That(loading.IsCompleted, Is.True, "Unified Save restore did not complete.");
-            Assert.That(loading.IsCompletedSuccessfully, Is.True);
+            Assert.That(
+                loading.IsCompletedSuccessfully,
+                Is.True,
+                loading.Exception?.ToString());
             var variables = Engine.GetService<ICustomVariableManager>();
             Assert.That(variables.VariableExists("missionAccepted"), Is.True);
             Assert.That(variables.GetVariableValue("missionAccepted").Boolean, Is.True);

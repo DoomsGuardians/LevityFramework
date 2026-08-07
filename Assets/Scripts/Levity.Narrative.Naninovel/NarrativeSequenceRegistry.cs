@@ -13,6 +13,15 @@ namespace Levity.Narrative.Naninovel
         public void Register(NarrativeSequenceId sequenceId, NaninovelSequence sequence)
         {
             if (sequence == null) throw new ArgumentNullException(nameof(sequence));
+            if (sequences.ContainsKey(sequenceId))
+                throw new InvalidOperationException(
+                    $"Narrative Sequence ID '{sequenceId}' is already registered.");
+            sequences.Add(sequenceId, sequence);
+        }
+
+        public void Replace(NarrativeSequenceId sequenceId, NaninovelSequence sequence)
+        {
+            if (sequence == null) throw new ArgumentNullException(nameof(sequence));
             sequences[sequenceId] = sequence;
         }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,6 +60,34 @@ namespace Levity.Narrative.Naninovel.Tests
             Assert.That(result.Status, Is.EqualTo(NarrativeSessionStatus.Failed));
             Assert.That(result.Failure.Code, Is.EqualTo(NarrativeFailureCode.BackendUnavailable));
             Assert.That(result.Failure.Message, Does.Contain("failed to initialize"));
+        }
+
+        [Test]
+        public void RegisteringTheSameStableSequenceIdTwiceFailsExplicitly()
+        {
+            var sequenceId = new NarrativeSequenceId("mission-briefing");
+            var registry = new NarrativeSequenceRegistry();
+            registry.Register(sequenceId, new NaninovelSequence("Mission/Original"));
+
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                registry.Register(sequenceId, new NaninovelSequence("Mission/AccidentalReplacement")));
+
+            Assert.That(exception.Message, Does.Contain("mission-briefing"));
+            Assert.That(registry.TryResolve(sequenceId, out var resolved), Is.True);
+            Assert.That(resolved.ScriptPath, Is.EqualTo("Mission/Original"));
+        }
+
+        [Test]
+        public void ExplicitReplacementChangesAnExistingSequenceMapping()
+        {
+            var sequenceId = new NarrativeSequenceId("mission-briefing");
+            var registry = new NarrativeSequenceRegistry();
+            registry.Register(sequenceId, new NaninovelSequence("Mission/Original"));
+
+            registry.Replace(sequenceId, new NaninovelSequence("Mission/Revised"));
+
+            Assert.That(registry.TryResolve(sequenceId, out var resolved), Is.True);
+            Assert.That(resolved.ScriptPath, Is.EqualTo("Mission/Revised"));
         }
 
         private sealed class RecordingPlayer : INaninovelPlayer

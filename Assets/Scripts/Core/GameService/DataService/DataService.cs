@@ -118,14 +118,20 @@ public class DataService : ILogic
 
         try
         {
-            await unifiedSave.SaveAsync(GetUnifiedSlotId(slot));
+            var unifiedResult = await unifiedSave.TrySaveAsync(GetUnifiedSlotId(slot));
+            if (unifiedResult.Status == UnifiedSaveStatus.Failed)
+            {
+                Debug.LogError($"[DataService] {unifiedResult.Message} {unifiedResult.Failure}");
+                return SaveSlotResult.Failed(unifiedResult);
+            }
             Debug.Log($"[DataService] Atomically saved Unified Save slot {slot}.");
             return SaveSlotResult.Saved();
         }
         catch (Exception ex)
         {
             Debug.LogError($"[DataService] Failed to write slot {slot}: {ex}");
-            return SaveSlotResult.Failed(ex);
+            return SaveSlotResult.Failed(
+                UnifiedSaveResult.UnexpectedFailure(GetUnifiedSlotId(slot), ex));
         }
     }
 
@@ -329,22 +335,56 @@ public enum SaveSlotStatus
 
 public readonly struct SaveSlotResult
 {
-    private SaveSlotResult(SaveSlotStatus status, string blockedReason, Exception exception)
+    private SaveSlotResult(
+        SaveSlotStatus status,
+        string blockedReason,
+        UnifiedSaveFailureCode failureCode,
+        string slotId,
+        string contributorId,
+        string diagnosticMessage,
+        Exception exception)
     {
         Status = status;
         BlockedReason = blockedReason;
+        FailureCode = failureCode;
+        SlotId = slotId;
+        ContributorId = contributorId;
+        DiagnosticMessage = diagnosticMessage;
         Exception = exception;
     }
 
     public SaveSlotStatus Status { get; }
     public string BlockedReason { get; }
+    public UnifiedSaveFailureCode FailureCode { get; }
+    public string SlotId { get; }
+    public string ContributorId { get; }
+    public string DiagnosticMessage { get; }
     public Exception Exception { get; }
 
-    public static SaveSlotResult Saved() => new SaveSlotResult(SaveSlotStatus.Saved, null, null);
+    public static SaveSlotResult Saved() => new SaveSlotResult(
+        SaveSlotStatus.Saved, null, UnifiedSaveFailureCode.None, null, null, null, null);
     public static SaveSlotResult Blocked(string reason) =>
-        new SaveSlotResult(SaveSlotStatus.Blocked, reason, null);
+        new SaveSlotResult(
+            SaveSlotStatus.Blocked, reason, UnifiedSaveFailureCode.None, null, null, null, null);
+    public static SaveSlotResult Failed(UnifiedSaveResult result) =>
+        new SaveSlotResult(
+            SaveSlotStatus.Failed,
+            null,
+            result.FailureCode,
+            result.SlotId,
+            result.ContributorId,
+            result.Message,
+            result.Failure);
+    [Obsolete("Use Failed(UnifiedSaveResult) to preserve the stable failure category and diagnostic context.")]
     public static SaveSlotResult Failed(Exception exception) =>
-        new SaveSlotResult(SaveSlotStatus.Failed, null, exception ?? throw new ArgumentNullException(nameof(exception)));
+        new SaveSlotResult(
+            SaveSlotStatus.Failed,
+            null,
+            UnifiedSaveFailureCode.None,
+            null,
+            null,
+            exception?.Message,
+            exception ?? throw new ArgumentNullException(nameof(exception)));
 }
 
 // ── 数据模型 ───────────────────────────────────────────────────────────────────

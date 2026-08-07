@@ -40,14 +40,24 @@ namespace Levity.UnifiedSave
             this.contributors = byId;
         }
 
+        [Obsolete("Use TrySaveAsync to receive caller-visible typed failures.")]
         public async Task SaveAsync(string slotId, CancellationToken cancellationToken = default)
+        {
+            var result = await TrySaveAsync(slotId, cancellationToken);
+            if (result.Status == UnifiedSaveStatus.Saved) return;
+            throw new UnifiedSaveException(result.Message, result.Failure);
+        }
+
+        public async Task<UnifiedSaveResult> TrySaveAsync(
+            string slotId,
+            CancellationToken cancellationToken = default)
         {
             var contributions = new List<UnifiedSaveContribution>(contributors.Count);
             foreach (var contributor in contributors.Values.OrderBy(item => item.Id, StringComparer.Ordinal))
             {
                 try
                 {
-                    var state = await contributor.CaptureAsync(cancellationToken).ConfigureAwait(false);
+                    var state = await contributor.CaptureAsync(cancellationToken);
                     contributions.Add(new UnifiedSaveContribution(
                         contributor.Id,
                         contributor.Version,
@@ -55,9 +65,8 @@ namespace Levity.UnifiedSave
                 }
                 catch (Exception exception) when (!(exception is OperationCanceledException))
                 {
-                    throw new UnifiedSaveException(
-                        $"Contributor '{contributor.Id}' failed to capture save state.",
-                        exception);
+                    return UnifiedSaveResult.ContributorCaptureFailed(
+                        slotId, contributor.Id, exception);
                 }
             }
 
@@ -66,17 +75,18 @@ namespace Levity.UnifiedSave
                 await store.ReplaceAsync(
                     slotId,
                     new UnifiedSaveRecord(contributions),
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken);
             }
             catch (Exception exception) when (!(exception is OperationCanceledException))
             {
-                throw new UnifiedSaveException($"Failed to commit Unified Save slot '{slotId}'.", exception);
+                return UnifiedSaveResult.StoreCommitFailed(slotId, exception);
             }
+            return UnifiedSaveResult.Saved(slotId);
         }
 
         public async Task LoadAsync(string slotId, CancellationToken cancellationToken = default)
         {
-            var result = await TryLoadAsync(slotId, cancellationToken).ConfigureAwait(false);
+            var result = await TryLoadAsync(slotId, cancellationToken);
             if (result.Status == UnifiedLoadStatus.Loaded) return;
             var inner = result.RollbackFailure == null
                 ? result.Failure
@@ -94,7 +104,7 @@ namespace Levity.UnifiedSave
             var currentById = new Dictionary<string, UnifiedSaveContribution>(StringComparer.Ordinal);
             try
             {
-                record = await store.ReadAsync(slotId, cancellationToken).ConfigureAwait(false);
+                record = await store.ReadAsync(slotId, cancellationToken);
                 savedById = record.Contributions.ToDictionary(item => item.Id, StringComparer.Ordinal);
                 if (savedById.Count != contributors.Count || contributors.Keys.Any(id => !savedById.ContainsKey(id)))
                     throw new UnifiedSaveException("The save slot does not contain the complete contributor set.");
@@ -104,7 +114,7 @@ namespace Levity.UnifiedSave
                     currentById.Add(contributor.Id, new UnifiedSaveContribution(
                         contributor.Id,
                         contributor.Version,
-                        await contributor.CaptureAsync(cancellationToken).ConfigureAwait(false)));
+                        await contributor.CaptureAsync(cancellationToken)));
                 }
             }
             catch (Exception exception) when (!(exception is OperationCanceledException))
@@ -122,7 +132,7 @@ namespace Levity.UnifiedSave
                     await contributor.RestoreAsync(
                         contribution.Version,
                         contribution.State,
-                        cancellationToken).ConfigureAwait(false);
+                        cancellationToken);
                 }
                 return UnifiedLoadResult.Loaded();
             }
@@ -138,7 +148,7 @@ namespace Levity.UnifiedSave
                         await contributor.RestoreAsync(
                             current.Version,
                             current.State,
-                            CancellationToken.None).ConfigureAwait(false);
+                            CancellationToken.None);
                     }
                     catch (Exception rollbackFailure)
                     {
@@ -152,6 +162,81 @@ namespace Levity.UnifiedSave
                         new AggregateException("One or more contributors failed to roll back.", rollbackFailures));
             }
         }
+    }
+
+    public enum UnifiedSaveStatus
+    {
+        Saved,
+        Failed
+    }
+
+    public enum UnifiedSaveFailureCode
+    {
+        None,
+        ContributorCaptureFailed,
+        StoreCommitFailed,
+        UnexpectedFailure
+    }
+
+    public readonly struct UnifiedSaveResult
+    {
+        private UnifiedSaveResult(
+            UnifiedSaveStatus status,
+            UnifiedSaveFailureCode failureCode,
+            string slotId,
+            string contributorId,
+            string message,
+            Exception failure)
+        {
+            Status = status;
+            FailureCode = failureCode;
+            SlotId = slotId;
+            ContributorId = contributorId;
+            Message = message;
+            Failure = failure;
+        }
+
+        public UnifiedSaveStatus Status { get; }
+        public UnifiedSaveFailureCode FailureCode { get; }
+        public string SlotId { get; }
+        public string ContributorId { get; }
+        public string Message { get; }
+        public Exception Failure { get; }
+
+        public static UnifiedSaveResult Saved(string slotId) =>
+            new UnifiedSaveResult(
+                UnifiedSaveStatus.Saved, UnifiedSaveFailureCode.None,
+                slotId, null, null, null);
+
+        public static UnifiedSaveResult ContributorCaptureFailed(
+            string slotId,
+            string contributorId,
+            Exception failure) =>
+            new UnifiedSaveResult(
+                UnifiedSaveStatus.Failed,
+                UnifiedSaveFailureCode.ContributorCaptureFailed,
+                slotId,
+                contributorId,
+                $"Contributor '{contributorId}' failed to capture Unified Save slot '{slotId}'.",
+                failure ?? throw new ArgumentNullException(nameof(failure)));
+
+        public static UnifiedSaveResult StoreCommitFailed(string slotId, Exception failure) =>
+            new UnifiedSaveResult(
+                UnifiedSaveStatus.Failed,
+                UnifiedSaveFailureCode.StoreCommitFailed,
+                slotId,
+                null,
+                $"Failed to commit Unified Save slot '{slotId}'.",
+                failure ?? throw new ArgumentNullException(nameof(failure)));
+
+        public static UnifiedSaveResult UnexpectedFailure(string slotId, Exception failure) =>
+            new UnifiedSaveResult(
+                UnifiedSaveStatus.Failed,
+                UnifiedSaveFailureCode.UnexpectedFailure,
+                slotId,
+                null,
+                $"An unexpected failure prevented Unified Save slot '{slotId}'.",
+                failure ?? throw new ArgumentNullException(nameof(failure)));
     }
 
     public enum UnifiedLoadStatus
